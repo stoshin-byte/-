@@ -28,7 +28,7 @@
     .voice-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; }
     .voice-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
     .voice-btn.error { background: #ffc107; color: #333; animation: none; }
-    /* グレーアウト時のスタイル */
+    /* グレーアウト（保存中）のスタイル */
     .voice-btn:disabled, .voice-btn.saving { background: #6c757d !important; color: #e0e0e0 !important; cursor: not-allowed; animation: none; }
     
     .status-msg { font-size: 12px; font-weight: bold; text-align: center; margin-top: 5px; height: 16px; }
@@ -86,7 +86,7 @@
     let currentStep = 0;
     let listenTimer = null;
     let isListening = false;
-    let isSaving = false; // 保存処理中フラグ
+    let isSaving = false;
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -130,7 +130,7 @@
     }
 
     function handleBtnClick() {
-      if (isSaving) return; // 保存処理中はボタンを無効化
+      if (isSaving) return;
       if (isListening) {
         haltProcess("キャンセルしました");
         return;
@@ -201,6 +201,20 @@
       btn.innerText = '↻ ここからやり直す（タップ）';
       btn.className = 'voice-btn error';
       btn.disabled = false;
+    }
+
+    // ボタンを「保存中」状態（グレーアウト）にロックする関数
+    function lockSavingUI() {
+      isSaving = true;
+      const startBtn = document.getElementById('start-btn');
+      const manualBtn = document.getElementById('manual-btn');
+      
+      startBtn.innerText = '⏳ 保存中...';
+      startBtn.className = 'voice-btn saving';
+      startBtn.disabled = true;
+      manualBtn.disabled = true;
+
+      updateGuidance("☁️ スプレッドシートへ送信中...");
     }
 
     function startDialogue() {
@@ -311,10 +325,12 @@
         const mega = document.getElementById('mega-code').value;
         const loc = document.getElementById('location').value;
         
-        // 音声読み上げ後に保存を開始
-        speak(`${mega}、${loc}、${qty}個で登録しました`, async () => {
-          await saveRecord();
-        });
+        // ★ 数量の確認が取れた瞬間に即時グレーアウト（ロック） ★
+        lockSavingUI();
+        
+        // 音声読み上げと並行して非同期でスプレッドシートへ保存を開始
+        speak(`${mega}、${loc}、${qty}個で登録しました`);
+        saveRecord();
       }
     }
 
@@ -332,28 +348,17 @@
     }
 
     async function saveRecordManual() {
+      lockSavingUI();
       await saveRecord();
     }
 
-    // 保存処理（ボタンのグレーアウト制御付き）
+    // 保存処理
     async function saveRecord() {
       const worker = document.getElementById('worker-name').value;
       const mega = document.getElementById('mega-code').value;
       const loc = document.getElementById('location').value;
       const qty = document.getElementById('quantity').value;
       if (!worker || !mega || !loc || !qty) return;
-
-      // ★ ボタンのグレーアウト開始 ★
-      isSaving = true;
-      const startBtn = document.getElementById('start-btn');
-      const manualBtn = document.getElementById('manual-btn');
-      
-      startBtn.innerText = '⏳ 保存中...';
-      startBtn.className = 'voice-btn saving';
-      startBtn.disabled = true;
-      manualBtn.disabled = true;
-
-      updateGuidance("☁️ スプレッドシートへ送信中...");
 
       const now = new Date();
       const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
@@ -396,8 +401,11 @@
         statusEl.innerText = '❌ シート送信失敗';
         updateGuidance("⚠️ 保存に失敗しました。もう一度お試しください。");
       } finally {
-        // ★ 保存完了後、ボタンを元に戻す（解除） ★
+        // ★ 保存完了後、ボタンを解禁して「▶ 対話スタート」に戻す ★
         isSaving = false;
+        const startBtn = document.getElementById('start-btn');
+        const manualBtn = document.getElementById('manual-btn');
+        
         startBtn.innerText = '▶ 対話スタート';
         startBtn.className = 'voice-btn';
         startBtn.disabled = false;
