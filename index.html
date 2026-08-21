@@ -14,7 +14,6 @@
     }
     .worker-badge.unset { background: #fff3cd; color: #856404; border-color: #ffeeba; }
 
-    /* ガイダンス表示領域 */
     .guidance-box {
       background: #17a2b8; color: white; padding: 15px; border-radius: 6px;
       font-weight: bold; font-size: 18px; text-align: center; margin-bottom: 15px;
@@ -28,6 +27,7 @@
 
     .voice-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; }
     .voice-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
+    .voice-btn.error { background: #ffc107; color: #333; animation: none; }
     
     .status-msg { font-size: 12px; font-weight: bold; text-align: center; margin-top: 5px; height: 16px; }
 
@@ -47,9 +47,7 @@
   </div>
 
   <div class="card">
-    <!-- 現在の質問・状況ガイド -->
     <div id="guidance" class="guidance-box">「対話スタート」を押してください</div>
-    
     <button id="start-btn" class="voice-btn" onclick="startDialogue()">▶ 対話スタート</button>
     <div id="status" class="status-msg"></div>
   </div>
@@ -59,46 +57,33 @@
       <label>作業者名</label>
       <input type="text" id="worker-name" placeholder="例: 山田">
     </div>
-
     <div class="field">
       <label>MEGAコード (数字6桁)</label>
       <input type="text" id="mega-code" placeholder="例: 325147" maxlength="6">
     </div>
-
     <div class="field">
       <label>格納ロケ (英数6桁)</label>
       <input type="text" id="location" placeholder="例: C10225" maxlength="6" style="text-transform: uppercase;">
     </div>
-
     <div class="field">
       <label>数量</label>
       <input type="number" id="quantity" placeholder="1" value="1">
     </div>
-
     <button onclick="saveRecordManual()" style="width:100%; padding:10px; background:#007bff; color:white; border:none; border-radius:4px; font-size:15px; margin-top:5px;">手動登録</button>
   </div>
 
   <h3>📝 作業履歴</h3>
   <table>
-    <thead>
-      <tr>
-        <th>時刻</th>
-        <th>作業者</th>
-        <th>MEGA</th>
-        <th>ロケ</th>
-        <th>数量</th>
-      </tr>
-    </thead>
+    <thead><tr><th>時刻</th><th>作業者</th><th>MEGA</th><th>ロケ</th><th>数量</th></tr></thead>
     <tbody id="history"></tbody>
   </table>
 
   <script>
-    // ★ GAS連携を行う場合はここにURLを貼ってください ★
+    // 設定されたGASのウェブアプリURL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEFPQJJD67mLmghxSS2Rl0JVtP9g_Mzo3cpHfiwrSBcels1BBud-4NGkXSWEWFdjWv/exec";
-
-    // ステート管理: 0=待機, 1=作業者, 2=MEGA, 3=ロケ, 4=数量
+    
     let currentStep = 0;
-
+    
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
 
@@ -113,13 +98,14 @@
         handleInput(text);
       };
 
-      recognition.onerror = () => {
-        updateGuidance("聞き取れませんでした。もう一度話してください。");
-        speak("聞き取れませんでした。もう一度おねがいします", () => listen());
+      recognition.onerror = (event) => {
+        if(event.error === 'no-speech') return;
+        haltProcess("エラーが発生しました。ボタンを押して再開してください。");
+        speak("エラーです。画面のボタンを押してください。");
       };
     }
 
-    // 音声読み上げ
+    // スピーカー音の自爆防止用ディレイ機能付き読み上げ
     function speak(text, callback) {
       window.speechSynthesis.cancel();
       const uttr = new SpeechSynthesisUtterance(text);
@@ -127,47 +113,64 @@
       uttr.rate = 1.1;
       
       uttr.onend = () => {
-        if (callback) callback();
+        if (callback) {
+          setTimeout(() => { callback(); }, 600); // 0.6秒待ってからマイク起動
+        }
       };
-      
       window.speechSynthesis.speak(uttr);
     }
 
-    // 音声聞き取り開始
     function listen() {
       if (!recognition) return;
       try {
         recognition.start();
         const btn = document.getElementById('start-btn');
         btn.innerText = '🔴 音声を聞き取り中...';
-        btn.classList.add('recording');
+        btn.className = 'voice-btn recording';
       } catch (e) {
-        console.log("Recognition error / already running", e);
+        console.log("マイク起動エラー", e);
       }
     }
 
     function stopListen() {
       if (!recognition) return;
-      recognition.stop();
-      const btn = document.getElementById('start-btn');
-      btn.innerText = '▶ 次の格納を開始';
-      btn.classList.remove('recording');
+      try { recognition.stop(); } catch(e){}
     }
 
-    // 対話セッションの開始（ボタン押下時）
+    function haltProcess(msg) {
+      stopListen();
+      updateGuidance("⚠️ " + msg);
+      const btn = document.getElementById('start-btn');
+      btn.innerText = '↻ ここからやり直す（タップ）';
+      btn.className = 'voice-btn error';
+    }
+
     function startDialogue() {
+      if(document.getElementById('start-btn').classList.contains('error')) {
+        retryCurrentStep();
+        return;
+      }
+
       const worker = document.getElementById('worker-name').value;
-      
       if (!worker) {
-        // 作業者が未設定なら作業者名から聞き取り
         currentStep = 1;
         highlightField('worker-name');
         updateGuidance("👤 作業者名をどうぞ");
         speak("作業者名をどうぞ", () => listen());
       } else {
-        // 作業者が設定済みならMEGAコードから開始
         askMegaCode();
       }
+    }
+
+    function retryCurrentStep() {
+      const btn = document.getElementById('start-btn');
+      btn.className = 'voice-btn';
+      
+      if(currentStep === 1) { speak("作業者名をどうぞ", () => listen()); updateGuidance("👤 作業者名をどうぞ"); }
+      else if(currentStep === 2) askMegaCode();
+      else if(currentStep === 3) askLocation();
+      else if(currentStep === 4) askQuantity();
+      else startDialogue();
     }
 
     function askMegaCode() {
@@ -191,42 +194,44 @@
       speak("数量は？", () => listen());
     }
 
-    // 各ステップの入力処理
     function handleInput(text) {
       stopListen();
-      
-      // 全角→半角変換と整形
       let raw = text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
                     .replace(/\s+/g, '')
                     .toUpperCase();
 
-      if (currentStep === 1) { // 作業者名
+      if (currentStep === 1) { 
         const name = text.replace(/(です|と言います|さん)/g, '').trim();
-        document.getElementById('worker-name').value = name;
-        updateWorkerDisplay(name);
-        askMegaCode();
-
-      } else if (currentStep === 2) { // MEGAコード (数字6桁)
+        if(name.length > 0) {
+          document.getElementById('worker-name').value = name;
+          updateWorkerDisplay(name);
+          askMegaCode();
+        } else {
+          haltProcess("名前が認識できません");
+          speak("認識できません。ボタンを押してやり直してください");
+        }
+      } 
+      else if (currentStep === 2) { 
         const match = raw.match(/[0-9]{6}/) || raw.match(/[0-9]{3,6}/);
-        if (match) {
+        if (match && match[0].length === 6) {
           document.getElementById('mega-code').value = match[0];
           askLocation();
         } else {
-          updateGuidance("⚠️ 6桁の数字が認識できませんでした");
-          speak("メガコードをもう一度おねがいします", () => listen());
+          haltProcess("6桁の数字が認識できません");
+          speak("ボタンを押して、メガコードからやり直してください");
         }
-
-      } else if (currentStep === 3) { // 格納ロケ (英数6桁)
+      } 
+      else if (currentStep === 3) { 
         const match = raw.match(/[A-Z0-9]{6}/) || raw.match(/[A-Z][0-9]{5}/);
-        if (match) {
+        if (match && match[0].length === 6) {
           document.getElementById('location').value = match[0];
           askQuantity();
         } else {
-          updateGuidance("⚠️ 英数6桁のロケが認識できませんでした");
-          speak("ロケーションをもう一度おねがいします", () => listen());
+          haltProcess("英数6桁のロケが認識できません");
+          speak("ボタンを押して、ロケーションからやり直してください");
         }
-
-      } else if (currentStep === 4) { // 数量
+      } 
+      else if (currentStep === 4) { 
         const match = raw.match(/[0-9]+/);
         const qty = match ? match[0] : "1";
         document.getElementById('quantity').value = qty;
@@ -234,48 +239,36 @@
         const mega = document.getElementById('mega-code').value;
         const loc = document.getElementById('location').value;
         
-        // ★ 登録完了時の処理 ★
         speak(`${mega}、${loc}、${qty}個で登録しました`, () => {
           saveRecord();
-          currentStep = 0; // 待機状態に戻す
-          highlightField(''); // ハイライト解除
+          currentStep = 0;
+          highlightField('');
           updateGuidance("✅ 登録完了！「▶ 次の格納を開始」を押してください");
-          
           const btn = document.getElementById('start-btn');
           btn.innerText = '▶ 次の格納を開始';
-          btn.classList.remove('recording');
+          btn.className = 'voice-btn';
         });
       }
     }
 
-    function updateGuidance(msg) {
-      document.getElementById('guidance').innerText = msg;
-    }
-
+    function updateGuidance(msg) { document.getElementById('guidance').innerText = msg; }
     function highlightField(id) {
       ['worker-name', 'mega-code', 'location', 'quantity'].forEach(fId => {
         const el = document.getElementById(fId);
-        if (fId === id) {
-          el.classList.add('active');
-        } else {
-          el.classList.remove('active');
-        }
+        if (fId === id) el.classList.add('active');
+        else el.classList.remove('active');
       });
     }
-
     function updateWorkerDisplay(name) {
       const display = document.getElementById('worker-display');
-      if (name) {
-        display.innerText = `👤 作業者: ${name}`;
-        display.classList.remove('unset');
-      }
+      if (name) { display.innerText = `👤 作業者: ${name}`; display.classList.remove('unset'); }
     }
 
     function saveRecordManual() {
       saveRecord();
-      currentStep = 0;
-      highlightField('');
-      updateGuidance("✅ 手動登録完了！");
+      currentStep = 0; highlightField(''); updateGuidance("✅ 手動登録完了！");
+      const btn = document.getElementById('start-btn');
+      btn.innerText = '▶ 次の格納を開始'; btn.className = 'voice-btn';
     }
 
     function saveRecord() {
@@ -283,29 +276,36 @@
       const mega = document.getElementById('mega-code').value;
       const loc = document.getElementById('location').value;
       const qty = document.getElementById('quantity').value;
-
       if (!worker || !mega || !loc || !qty) return;
 
       const now = new Date();
       const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
       const fullDateStr = now.toLocaleString('ja-JP');
 
-      // 履歴追加
+      // 画面上の表に追加
       const row = `<tr><td>${timeStr}</td><td>${worker}</td><td>${mega}</td><td>${loc}</td><td>${qty}</td></tr>`;
       document.getElementById('history').insertAdjacentHTML('afterbegin', row);
 
-      // GAS送信処理
-      if (GAS_URL) {
-        const payload = { timestamp: fullDateStr, worker: worker, mega: mega, location: loc, quantity: qty };
-        fetch(GAS_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
+      const statusEl = document.getElementById('status');
+      statusEl.style.color = '#007bff';
+      statusEl.innerText = '☁️ スプレッドシートへ送信中...';
 
-      // 入力欄初期化（作業者は維持）
+      // Googleスプレッドシートへ自動送信
+      fetch(GAS_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timestamp: fullDateStr, worker: worker, mega: mega, location: loc, quantity: qty })
+      }).then(() => {
+        statusEl.style.color = '#28a745';
+        statusEl.innerText = '✅ シート保存完了';
+        setTimeout(() => { statusEl.innerText = ''; }, 3000);
+      }).catch(() => {
+        statusEl.style.color = '#dc3545';
+        statusEl.innerText = '❌ シート送信失敗';
+      });
+
+      // 入力欄クリア（作業者名は維持）
       document.getElementById('mega-code').value = '';
       document.getElementById('location').value = '';
       document.getElementById('quantity').value = '1';
