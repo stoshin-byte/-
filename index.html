@@ -48,7 +48,7 @@
 
   <div class="card">
     <div id="guidance" class="guidance-box">「対話スタート」を押してください</div>
-    <button id="start-btn" class="voice-btn" onclick="startDialogue()">▶ 対話スタート</button>
+    <button id="start-btn" class="voice-btn" onclick="handleBtnClick()">▶ 対話スタート</button>
     <div id="status" class="status-msg"></div>
   </div>
 
@@ -79,10 +79,11 @@
   </table>
 
   <script>
-    // 設定されたGASのウェブアプリURL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEFPQJJD67mLmghxSS2Rl0JVtP9g_Mzo3cpHfiwrSBcels1BBud-4NGkXSWEWFdjWv/exec";
     
     let currentStep = 0;
+    let listenTimer = null; // タイムアウト用タイマー
+    let isListening = false;
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -94,18 +95,39 @@
       recognition.interimResults = false;
 
       recognition.onresult = (event) => {
+        clearTimeout(listenTimer);
         const text = event.results[0][0].transcript;
         handleInput(text);
       };
 
       recognition.onerror = (event) => {
-        if(event.error === 'no-speech') return;
-        haltProcess("エラーが発生しました。ボタンを押して再開してください。");
-        speak("エラーです。画面のボタンを押してください。");
+        clearTimeout(listenTimer);
+        if(event.error === 'no-speech') {
+          haltProcess("応答がありませんでした");
+          return;
+        }
+        haltProcess("エラーが発生しました");
+      };
+
+      recognition.onend = () => {
+        clearTimeout(listenTimer);
+        // マイク終了時はフラグと表示をリセット（処理中の場合はそのまま）
+        if (isListening) {
+          stopListen();
+        }
       };
     }
 
-    // スピーカー音の自爆防止用ディレイ機能付き読み上げ
+    // ボタンタップ時の処理（リセット機能付き）
+    function handleBtnClick() {
+      // 聞き取り中にボタンを押した場合は「強制キャンセル・リセット」
+      if (isListening) {
+        haltProcess("キャンセルしました");
+        return;
+      }
+      startDialogue();
+    }
+
     function speak(text, callback) {
       window.speechSynthesis.cancel();
       const uttr = new SpeechSynthesisUtterance(text);
@@ -114,7 +136,7 @@
       
       uttr.onend = () => {
         if (callback) {
-          setTimeout(() => { callback(); }, 600); // 0.6秒待ってからマイク起動
+          setTimeout(() => { callback(); }, 600);
         }
       };
       window.speechSynthesis.speak(uttr);
@@ -123,18 +145,42 @@
     function listen() {
       if (!recognition) return;
       try {
-        recognition.start();
-        const btn = document.getElementById('start-btn');
-        btn.innerText = '🔴 音声を聞き取り中...';
-        btn.className = 'voice-btn recording';
+        window.speechSynthesis.cancel(); // 読み上げが残っていれば停止
+        recognition.stop(); // 既存のセッションがあればリセット
+        
+        setTimeout(() => {
+          recognition.start();
+          isListening = true;
+          const btn = document.getElementById('start-btn');
+          btn.innerText = '🔴 音声を聞き取り中...（タップで中止）';
+          btn.className = 'voice-btn recording';
+
+          // 10秒応答がなければ自動停止（スタック防止）
+          clearTimeout(listenTimer);
+          listenTimer = setTimeout(() => {
+            if (isListening) {
+              haltProcess("時間切れです。もう一度お試しください。");
+            }
+          }, 10000);
+        }, 100);
+
       } catch (e) {
         console.log("マイク起動エラー", e);
+        haltProcess("マイクの起動に失敗しました");
       }
     }
 
     function stopListen() {
-      if (!recognition) return;
-      try { recognition.stop(); } catch(e){}
+      isListening = false;
+      clearTimeout(listenTimer);
+      if (recognition) {
+        try { recognition.stop(); } catch(e){}
+      }
+      const btn = document.getElementById('start-btn');
+      if (!btn.classList.contains('error')) {
+        btn.innerText = '▶ 次の格納を開始';
+        btn.className = 'voice-btn';
+      }
     }
 
     function haltProcess(msg) {
@@ -146,10 +192,8 @@
     }
 
     function startDialogue() {
-      if(document.getElementById('start-btn').classList.contains('error')) {
-        retryCurrentStep();
-        return;
-      }
+      const btn = document.getElementById('start-btn');
+      btn.className = 'voice-btn';
 
       const worker = document.getElementById('worker-name').value;
       if (!worker) {
@@ -160,17 +204,6 @@
       } else {
         askMegaCode();
       }
-    }
-
-    function retryCurrentStep() {
-      const btn = document.getElementById('start-btn');
-      btn.className = 'voice-btn';
-      
-      if(currentStep === 1) { speak("作業者名をどうぞ", () => listen()); updateGuidance("👤 作業者名をどうぞ"); }
-      else if(currentStep === 2) askMegaCode();
-      else if(currentStep === 3) askLocation();
-      else if(currentStep === 4) askQuantity();
-      else startDialogue();
     }
 
     function askMegaCode() {
@@ -208,7 +241,7 @@
           askMegaCode();
         } else {
           haltProcess("名前が認識できません");
-          speak("認識できません。ボタンを押してやり直してください");
+          speak("認識できません。タップしてやり直してください");
         }
       } 
       else if (currentStep === 2) { 
@@ -218,7 +251,7 @@
           askLocation();
         } else {
           haltProcess("6桁の数字が認識できません");
-          speak("ボタンを押して、メガコードからやり直してください");
+          speak("メガコードからやり直してください");
         }
       } 
       else if (currentStep === 3) { 
@@ -228,7 +261,7 @@
           askQuantity();
         } else {
           haltProcess("英数6桁のロケが認識できません");
-          speak("ボタンを押して、ロケーションからやり直してください");
+          speak("ロケーションからやり直してください");
         }
       } 
       else if (currentStep === 4) { 
@@ -282,7 +315,6 @@
       const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
       const fullDateStr = now.toLocaleString('ja-JP');
 
-      // 画面上の表に追加
       const row = `<tr><td>${timeStr}</td><td>${worker}</td><td>${mega}</td><td>${loc}</td><td>${qty}</td></tr>`;
       document.getElementById('history').insertAdjacentHTML('afterbegin', row);
 
@@ -290,7 +322,6 @@
       statusEl.style.color = '#007bff';
       statusEl.innerText = '☁️ スプレッドシートへ送信中...';
 
-      // Googleスプレッドシートへ自動送信
       fetch(GAS_URL, { 
         method: 'POST', 
         mode: 'no-cors', 
@@ -305,7 +336,6 @@
         statusEl.innerText = '❌ シート送信失敗';
       });
 
-      // 入力欄クリア（作業者名は維持）
       document.getElementById('mega-code').value = '';
       document.getElementById('location').value = '';
       document.getElementById('quantity').value = '1';
