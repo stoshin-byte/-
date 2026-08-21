@@ -82,7 +82,7 @@
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEFPQJJD67mLmghxSS2Rl0JVtP9g_Mzo3cpHfiwrSBcels1BBud-4NGkXSWEWFdjWv/exec";
     
-    let currentStep = 0; // 0=待機, 1=作業者, 2=MEGA, 3=ロケ, 4=数量
+    let currentStep = 0;
     let listenTimer = null;
     let isListening = false;
     let isSaving = false;
@@ -135,7 +135,6 @@
         return;
       }
       
-      // エラーからの再開時または途中の項目がある場合はその項目から再開
       if (document.getElementById('start-btn').classList.contains('error') || currentStep > 0) {
         retryCurrentStep();
       } else {
@@ -143,11 +142,27 @@
       }
     }
 
-    function speak(text, callback) {
+    // ★ 数字を「さん ろく ご いち よん に」のように1桁ずつひらがなに変換する関数
+    function convertDigitsToSpoken(str) {
+      const digitMap = {
+        '0': ' ぜろ ', '1': ' いち ', '2': ' に ', '3': ' さん ', '4': ' よん ',
+        '5': ' ご ', '6': ' ろく ', '7': ' なな ', '8': ' はち ', '9': ' きゅう '
+      };
+      return str.replace(/[0-9]/g, match => digitMap[match] || match);
+    }
+
+    // 音声読み上げ（速度を 0.8 に落としてゆっくり読み上げ）
+    function speak(text, callback, isConfirmation = false) {
       window.speechSynthesis.cancel();
-      const uttr = new SpeechSynthesisUtterance(text);
+      
+      // 確認読み上げ時は数字を1桁ずつ展開
+      const spokenText = isConfirmation ? convertDigitsToSpoken(text) : text;
+      
+      const uttr = new SpeechSynthesisUtterance(spokenText);
       uttr.lang = 'ja-JP';
-      uttr.rate = 1.1;
+      
+      // 速度設定: 確認読み上げ時は 0.8（ゆっくり）、通常は 1.0
+      uttr.rate = isConfirmation ? 0.8 : 1.0;
       
       uttr.onend = () => {
         if (callback) {
@@ -208,7 +223,6 @@
       btn.disabled = false;
     }
 
-    // 失敗したその項目から音声読み上げ・聞き取りをリトライ
     function retryCurrentStep() {
       const btn = document.getElementById('start-btn');
       btn.className = 'voice-btn';
@@ -309,7 +323,7 @@
         const match = raw.match(/[0-9]{6}/) || raw.match(/[0-9]{3,6}/);
         if (match && match[0].length === 6) {
           document.getElementById('mega-code').value = match[0];
-          askLocation(); // 成功したら次のロケーションに進む
+          askLocation();
         } else {
           haltProcess("6桁の数字が認識できませんでした");
           speak("メガコードが認識できませんでした。タップしてやり直してください");
@@ -319,7 +333,7 @@
         const locResult = parseLocationText(text);
         if (locResult) {
           document.getElementById('location').value = locResult;
-          askQuantity(); // 成功したら次の数量に進む
+          askQuantity();
         } else {
           haltProcess("ロケーションが認識できませんでした");
           speak("ロケーションが認識できませんでした。タップしてやり直してください");
@@ -333,9 +347,11 @@
         const mega = document.getElementById('mega-code').value;
         const loc = document.getElementById('location').value;
         
-        speak(`${mega}、${loc}、${qty}個で登録しました`, async () => {
+        // ★ 完了時の読み上げテキスト（isConfirmation=true でゆっくり・1桁ずつ読み上げ）
+        const confirmMsg = `${mega}、${loc}、${qty}個で登録しました`;
+        speak(confirmMsg, async () => {
           await saveRecord();
-        });
+        }, true);
       }
     }
 
@@ -399,12 +415,11 @@
         statusEl.innerText = '✅ シート保存完了';
         setTimeout(() => { statusEl.innerText = ''; }, 3000);
 
-        // 入力欄クリア
         document.getElementById('mega-code').value = '';
         document.getElementById('location').value = '';
         document.getElementById('quantity').value = '1';
 
-        currentStep = 0; // 全工程完了時のみ初期ステップに戻す
+        currentStep = 0;
         highlightField('');
         updateGuidance("✅ 登録完了！「▶ 対話スタート」を押してください");
 
