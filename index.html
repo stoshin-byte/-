@@ -82,7 +82,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEFPQJJD67mLmghxSS2Rl0JVtP9g_Mzo3cpHfiwrSBcels1BBud-4NGkXSWEWFdjWv/exec";
     
     let currentStep = 0;
-    let listenTimer = null; // タイムアウト用タイマー
+    let listenTimer = null;
     let isListening = false;
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -111,16 +111,13 @@
 
       recognition.onend = () => {
         clearTimeout(listenTimer);
-        // マイク終了時はフラグと表示をリセット（処理中の場合はそのまま）
         if (isListening) {
           stopListen();
         }
       };
     }
 
-    // ボタンタップ時の処理（リセット機能付き）
     function handleBtnClick() {
-      // 聞き取り中にボタンを押した場合は「強制キャンセル・リセット」
       if (isListening) {
         haltProcess("キャンセルしました");
         return;
@@ -145,8 +142,8 @@
     function listen() {
       if (!recognition) return;
       try {
-        window.speechSynthesis.cancel(); // 読み上げが残っていれば停止
-        recognition.stop(); // 既存のセッションがあればリセット
+        window.speechSynthesis.cancel();
+        recognition.stop();
         
         setTimeout(() => {
           recognition.start();
@@ -155,7 +152,6 @@
           btn.innerText = '🔴 音声を聞き取り中...（タップで中止）';
           btn.className = 'voice-btn recording';
 
-          // 10秒応答がなければ自動停止（スタック防止）
           clearTimeout(listenTimer);
           listenTimer = setTimeout(() => {
             if (isListening) {
@@ -238,7 +234,12 @@
         if(name.length > 0) {
           document.getElementById('worker-name').value = name;
           updateWorkerDisplay(name);
-          askMegaCode();
+          
+          // ★変更点：作業者登録完了後はコード入力へ自動遷移せず、一旦停止・待機させる
+          currentStep = 0;
+          highlightField('');
+          updateGuidance(`👤 作業者を ${name} に設定しました。「▶ 次の格納を開始」を押してください`);
+          speak(`作業者を ${name} さんに設定しました。次の格納を開始してください`);
         } else {
           haltProcess("名前が認識できません");
           speak("認識できません。タップしてやり直してください");
