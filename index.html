@@ -28,7 +28,6 @@
     .voice-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; }
     .voice-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
     .voice-btn.error { background: #ffc107; color: #333; animation: none; }
-    /* グレーアウト（保存中）のスタイル */
     .voice-btn:disabled, .voice-btn.saving { background: #6c757d !important; color: #e0e0e0 !important; cursor: not-allowed; animation: none; }
     
     .status-msg { font-size: 12px; font-weight: bold; text-align: center; margin-top: 5px; height: 16px; }
@@ -83,7 +82,7 @@
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEFPQJJD67mLmghxSS2Rl0JVtP9g_Mzo3cpHfiwrSBcels1BBud-4NGkXSWEWFdjWv/exec";
     
-    let currentStep = 0;
+    let currentStep = 0; // 0=待機, 1=作業者, 2=MEGA, 3=ロケ, 4=数量
     let listenTimer = null;
     let isListening = false;
     let isSaving = false;
@@ -135,7 +134,13 @@
         haltProcess("キャンセルしました");
         return;
       }
-      startDialogue();
+      
+      // エラーからの再開時または途中の項目がある場合はその項目から再開
+      if (document.getElementById('start-btn').classList.contains('error') || currentStep > 0) {
+        retryCurrentStep();
+      } else {
+        startDialogue();
+      }
     }
 
     function speak(text, callback) {
@@ -198,23 +203,22 @@
       stopListen();
       updateGuidance("⚠️ " + msg);
       const btn = document.getElementById('start-btn');
-      btn.innerText = '↻ ここからやり直す（タップ）';
+      btn.innerText = '↻ この項目をやり直す（タップ）';
       btn.className = 'voice-btn error';
       btn.disabled = false;
     }
 
-    // ボタンを「保存中」状態（グレーアウト）にロックする関数
-    function lockSavingUI() {
-      isSaving = true;
-      const startBtn = document.getElementById('start-btn');
-      const manualBtn = document.getElementById('manual-btn');
-      
-      startBtn.innerText = '⏳ 保存中...';
-      startBtn.className = 'voice-btn saving';
-      startBtn.disabled = true;
-      manualBtn.disabled = true;
+    // 失敗したその項目から音声読み上げ・聞き取りをリトライ
+    function retryCurrentStep() {
+      const btn = document.getElementById('start-btn');
+      btn.className = 'voice-btn';
+      btn.disabled = false;
 
-      updateGuidance("☁️ スプレッドシートへ送信中...");
+      if (currentStep === 1) askWorker();
+      else if (currentStep === 2) askMegaCode();
+      else if (currentStep === 3) askLocation();
+      else if (currentStep === 4) askQuantity();
+      else startDialogue();
     }
 
     function startDialogue() {
@@ -225,13 +229,17 @@
 
       const worker = document.getElementById('worker-name').value;
       if (!worker) {
-        currentStep = 1;
-        highlightField('worker-name');
-        updateGuidance("👤 作業者名をどうぞ");
-        speak("作業者名をどうぞ", () => listen());
+        askWorker();
       } else {
         askMegaCode();
       }
+    }
+
+    function askWorker() {
+      currentStep = 1;
+      highlightField('worker-name');
+      updateGuidance("👤 作業者名をどうぞ");
+      speak("作業者名をどうぞ", () => listen());
     }
 
     function askMegaCode() {
@@ -293,28 +301,28 @@
           btn.innerText = '▶ 対話スタート';
           btn.className = 'voice-btn';
         } else {
-          haltProcess("名前が認識できません");
-          speak("認識できません。タップしてやり直してください");
+          haltProcess("名前が認識できませんでした");
+          speak("名前が認識できませんでした。タップしてやり直してください");
         }
       } 
       else if (currentStep === 2) { 
         const match = raw.match(/[0-9]{6}/) || raw.match(/[0-9]{3,6}/);
         if (match && match[0].length === 6) {
           document.getElementById('mega-code').value = match[0];
-          askLocation();
+          askLocation(); // 成功したら次のロケーションに進む
         } else {
-          haltProcess("6桁の数字が認識できません");
-          speak("メガコードからやり直してください");
+          haltProcess("6桁の数字が認識できませんでした");
+          speak("メガコードが認識できませんでした。タップしてやり直してください");
         }
       } 
       else if (currentStep === 3) { 
         const locResult = parseLocationText(text);
         if (locResult) {
           document.getElementById('location').value = locResult;
-          askQuantity();
+          askQuantity(); // 成功したら次の数量に進む
         } else {
-          haltProcess("ロケーションが認識できません");
-          speak("「シー 10225」のように話すか、画面で直接修正してください");
+          haltProcess("ロケーションが認識できませんでした");
+          speak("ロケーションが認識できませんでした。タップしてやり直してください");
         }
       } 
       else if (currentStep === 4) { 
@@ -325,12 +333,9 @@
         const mega = document.getElementById('mega-code').value;
         const loc = document.getElementById('location').value;
         
-        // ★ 数量の確認が取れた瞬間に即時グレーアウト（ロック） ★
-        lockSavingUI();
-        
-        // 音声読み上げと並行して非同期でスプレッドシートへ保存を開始
-        speak(`${mega}、${loc}、${qty}個で登録しました`);
-        saveRecord();
+        speak(`${mega}、${loc}、${qty}個で登録しました`, async () => {
+          await saveRecord();
+        });
       }
     }
 
@@ -348,17 +353,26 @@
     }
 
     async function saveRecordManual() {
-      lockSavingUI();
       await saveRecord();
     }
 
-    // 保存処理
     async function saveRecord() {
       const worker = document.getElementById('worker-name').value;
       const mega = document.getElementById('mega-code').value;
       const loc = document.getElementById('location').value;
       const qty = document.getElementById('quantity').value;
       if (!worker || !mega || !loc || !qty) return;
+
+      isSaving = true;
+      const startBtn = document.getElementById('start-btn');
+      const manualBtn = document.getElementById('manual-btn');
+      
+      startBtn.innerText = '⏳ 保存中...';
+      startBtn.className = 'voice-btn saving';
+      startBtn.disabled = true;
+      manualBtn.disabled = true;
+
+      updateGuidance("☁️ スプレッドシートへ送信中...");
 
       const now = new Date();
       const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
@@ -378,7 +392,6 @@
           });
         }
 
-        // 成功時の画面更新
         const row = `<tr><td>${timeStr}</td><td>${worker}</td><td>${mega}</td><td>${loc}</td><td>${qty}</td></tr>`;
         document.getElementById('history').insertAdjacentHTML('afterbegin', row);
 
@@ -391,7 +404,7 @@
         document.getElementById('location').value = '';
         document.getElementById('quantity').value = '1';
 
-        currentStep = 0;
+        currentStep = 0; // 全工程完了時のみ初期ステップに戻す
         highlightField('');
         updateGuidance("✅ 登録完了！「▶ 対話スタート」を押してください");
 
@@ -401,11 +414,7 @@
         statusEl.innerText = '❌ シート送信失敗';
         updateGuidance("⚠️ 保存に失敗しました。もう一度お試しください。");
       } finally {
-        // ★ 保存完了後、ボタンを解禁して「▶ 対話スタート」に戻す ★
         isSaving = false;
-        const startBtn = document.getElementById('start-btn');
-        const manualBtn = document.getElementById('manual-btn');
-        
         startBtn.innerText = '▶ 対話スタート';
         startBtn.className = 'voice-btn';
         startBtn.disabled = false;
