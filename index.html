@@ -125,15 +125,16 @@
       startDialogue();
     }
 
+    // 読み上げスピード向上と待機時間短縮（300ms）
     function speak(text, callback) {
       window.speechSynthesis.cancel();
       const uttr = new SpeechSynthesisUtterance(text);
       uttr.lang = 'ja-JP';
-      uttr.rate = 1.1;
+      uttr.rate = 1.2; // 少し早めのテンポで喋らせる
       
       uttr.onend = () => {
         if (callback) {
-          setTimeout(() => { callback(); }, 600);
+          setTimeout(() => { callback(); }, 300); // 待機時間を300msに短縮
         }
       };
       window.speechSynthesis.speak(uttr);
@@ -149,7 +150,8 @@
           recognition.start();
           isListening = true;
           const btn = document.getElementById('start-btn');
-          btn.innerText = '🔴 音声を聞き取り中...（タップで中止）';
+          // ★修正: 「音声登録中...」の表記に変更
+          btn.innerText = '🎤 音声登録中...（タップで中止）';
           btn.className = 'voice-btn recording';
 
           clearTimeout(listenTimer);
@@ -157,8 +159,8 @@
             if (isListening) {
               haltProcess("時間切れです。もう一度お試しください。");
             }
-          }, 10000);
-        }, 100);
+          }, 8000); // 応答待ちを8秒に短縮
+        }, 50);
 
       } catch (e) {
         console.log("マイク起動エラー", e);
@@ -174,7 +176,7 @@
       }
       const btn = document.getElementById('start-btn');
       if (!btn.classList.contains('error')) {
-        btn.innerText = '▶ 次の格納を開始';
+        btn.innerText = '▶ 対話スタート';
         btn.className = 'voice-btn';
       }
     }
@@ -235,11 +237,14 @@
           document.getElementById('worker-name').value = name;
           updateWorkerDisplay(name);
           
-          // ★変更点：作業者登録完了後はコード入力へ自動遷移せず、一旦停止・待機させる
           currentStep = 0;
           highlightField('');
-          updateGuidance(`👤 作業者を ${name} に設定しました。「▶ 次の格納を開始」を押してください`);
-          speak(`作業者を ${name} さんに設定しました。次の格納を開始してください`);
+          updateGuidance(`👤 作業者を ${name} に設定しました。「▶ 対話スタート」を押してください`);
+          speak(`作業者を ${name} さんに設定しました。`);
+          
+          const btn = document.getElementById('start-btn');
+          btn.innerText = '▶ 対話スタート';
+          btn.className = 'voice-btn';
         } else {
           haltProcess("名前が認識できません");
           speak("認識できません。タップしてやり直してください");
@@ -270,16 +275,17 @@
         const qty = match ? match[0] : "1";
         document.getElementById('quantity').value = qty;
         
-        const mega = document.getElementById('mega-code').value;
-        const loc = document.getElementById('location').value;
+        // ★修正: ガイダンス領域に「しばらくお待ちください」を表示
+        updateGuidance("⏳ しばらくお待ちください...");
         
-        speak(`${mega}、${loc}、${qty}個で登録しました`, () => {
+        // 短めのメッセージで応答スピード感向上
+        speak("登録しました", () => {
           saveRecord();
           currentStep = 0;
           highlightField('');
-          updateGuidance("✅ 登録完了！「▶ 次の格納を開始」を押してください");
+          updateGuidance("✅ 登録完了！「▶ 対話スタート」を押してください");
           const btn = document.getElementById('start-btn');
-          btn.innerText = '▶ 次の格納を開始';
+          btn.innerText = '▶ 対話スタート';
           btn.className = 'voice-btn';
         });
       }
@@ -299,10 +305,11 @@
     }
 
     function saveRecordManual() {
+      updateGuidance("⏳ しばらくお待ちください...");
       saveRecord();
       currentStep = 0; highlightField(''); updateGuidance("✅ 手動登録完了！");
       const btn = document.getElementById('start-btn');
-      btn.innerText = '▶ 次の格納を開始'; btn.className = 'voice-btn';
+      btn.innerText = '▶ 対話スタート'; btn.className = 'voice-btn';
     }
 
     function saveRecord() {
