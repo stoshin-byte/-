@@ -3,34 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>対話型 MEGAコード 格納記録</title>
+  <title>MEGAコード 格納記録</title>
   <style>
     body { font-family: sans-serif; padding: 15px; max-width: 500px; margin: 0 auto; background: #f8f9fa; }
     .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
     
     .worker-badge { 
       background: #e3f2fd; color: #0d47a1; padding: 8px 12px; border-radius: 20px; 
-      font-weight: bold; display: inline-block; margin-bottom: 10px; font-size: 14px; border: 1px solid #bbdefb;
-    }
-    .worker-badge.unset { background: #fff3cd; color: #856404; border-color: #ffeeba; }
-
-    .guidance-box {
-      background: #17a2b8; color: white; padding: 15px; border-radius: 6px;
-      font-weight: bold; font-size: 18px; text-align: center; margin-bottom: 15px;
-      min-height: 28px;
+      font-weight: bold; display: inline-block; margin-bottom: 12px; font-size: 14px; border: 1px solid #bbdefb;
     }
 
-    .field { margin-bottom: 10px; }
+    .field { margin-bottom: 12px; }
     label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 13px; color: #495057; }
-    input { width: 100%; padding: 8px 10px; font-size: 18px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 4px; }
-    input.active { border: 2px solid #007bff; background: #e7f3ff; }
-
-    .voice-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; }
-    .voice-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
-    .voice-btn.error { background: #ffc107; color: #333; animation: none; }
-    .voice-btn:disabled, .voice-btn.saving { background: #6c757d !important; color: #e0e0e0 !important; cursor: not-allowed; animation: none; }
     
-    .status-msg { font-size: 12px; font-weight: bold; text-align: center; margin-top: 5px; height: 16px; }
+    .input-group { display: flex; gap: 8px; }
+    input { flex: 1; padding: 10px; font-size: 18px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 4px; }
+    
+    .mic-btn { padding: 10px 14px; background: #17a2b8; color: white; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+    .mic-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
+
+    /* A~Z キーボードレイアウト */
+    .keyboard-container {
+      margin-top: 8px;
+      background: #e9ecef;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #ced4da;
+    }
+    .kb-row { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
+    .kb-row:last-child { margin-bottom: 0; }
+    .alpha-btn {
+      flex: 1;
+      padding: 10px 0;
+      background: white;
+      border: 1px solid #adb5bd;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 15px;
+      cursor: pointer;
+      color: #212529;
+      text-align: center;
+      touch-action: manipulation;
+    }
+    .alpha-btn:active { background: #007bff; color: white; }
+
+    .submit-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px; }
+    .submit-btn:disabled { background: #6c757d !important; cursor: not-allowed; }
+    
+    .status-msg { font-size: 13px; font-weight: bold; text-align: center; margin-top: 8px; height: 18px; }
 
     table { width: 100%; border-collapse: collapse; background: white; margin-top: 10px; }
     th, td { border: 1px solid #dee2e6; padding: 6px 4px; text-align: center; font-size: 13px; }
@@ -41,36 +61,83 @@
 </head>
 <body>
 
-  <h2>🗣️ 対話型 格納記録アプリ</h2>
-
-  <div id="worker-display" class="worker-badge unset">
-    👤 作業者: 未設定（「作業者 ○○」と設定）
-  </div>
+  <h2>📦 MEGAコード 格納記録</h2>
 
   <div class="card">
-    <div id="guidance" class="guidance-box">「対話スタート」を押してください</div>
-    <button id="start-btn" class="voice-btn" onclick="handleBtnClick()">▶ 対話スタート</button>
-    <div id="status" class="status-msg"></div>
-  </div>
+    <div id="worker-display" class="worker-badge">
+      👤 作業者: 未設定
+    </div>
 
-  <div class="card">
     <div class="field">
       <label>作業者名</label>
-      <input type="text" id="worker-name" placeholder="例: 山田">
+      <div class="input-group">
+        <input type="text" id="worker-name" placeholder="例: 山田">
+        <button class="mic-btn" onclick="speechToInput('worker-name')">🎤 音声</button>
+      </div>
     </div>
+
     <div class="field">
       <label>MEGAコード (数字6桁)</label>
-      <input type="text" id="mega-code" placeholder="例: 325147" maxlength="6">
+      <div class="input-group">
+        <input type="text" id="mega-code" placeholder="例: 325147" maxlength="6">
+        <button class="mic-btn" onclick="speechToInput('mega-code', 6)">🎤 音声</button>
+      </div>
     </div>
+
     <div class="field">
       <label>格納ロケ (英数6桁)</label>
-      <input type="text" id="location" placeholder="例: C10225" maxlength="6" style="text-transform: uppercase;">
+      <div class="input-group">
+        <input type="text" id="location" placeholder="例: C10225" maxlength="6" style="text-transform: uppercase;">
+        <button class="mic-btn" onclick="speechToInput('location')">🎤 音声</button>
+      </div>
+
+      <!-- A〜Z 全26文字キーボード -->
+      <div class="keyboard-container">
+        <div class="kb-row">
+          <button class="alpha-btn" onclick="setAlpha('Q')">Q</button>
+          <button class="alpha-btn" onclick="setAlpha('W')">W</button>
+          <button class="alpha-btn" onclick="setAlpha('E')">E</button>
+          <button class="alpha-btn" onclick="setAlpha('R')">R</button>
+          <button class="alpha-btn" onclick="setAlpha('T')">T</button>
+          <button class="alpha-btn" onclick="setAlpha('Y')">Y</button>
+          <button class="alpha-btn" onclick="setAlpha('U')">U</button>
+          <button class="alpha-btn" onclick="setAlpha('I')">I</button>
+          <button class="alpha-btn" onclick="setAlpha('O')">O</button>
+          <button class="alpha-btn" onclick="setAlpha('P')">P</button>
+        </div>
+        <div class="kb-row">
+          <button class="alpha-btn" onclick="setAlpha('A')">A</button>
+          <button class="alpha-btn" onclick="setAlpha('S')">S</button>
+          <button class="alpha-btn" onclick="setAlpha('D')">D</button>
+          <button class="alpha-btn" onclick="setAlpha('F')">F</button>
+          <button class="alpha-btn" onclick="setAlpha('G')">G</button>
+          <button class="alpha-btn" onclick="setAlpha('H')">H</button>
+          <button class="alpha-btn" onclick="setAlpha('J')">J</button>
+          <button class="alpha-btn" onclick="setAlpha('K')">K</button>
+          <button class="alpha-btn" onclick="setAlpha('L')">L</button>
+        </div>
+        <div class="kb-row">
+          <button class="alpha-btn" onclick="setAlpha('Z')">Z</button>
+          <button class="alpha-btn" onclick="setAlpha('X')">X</button>
+          <button class="alpha-btn" onclick="setAlpha('C')">C</button>
+          <button class="alpha-btn" onclick="setAlpha('V')">V</button>
+          <button class="alpha-btn" onclick="setAlpha('B')">B</button>
+          <button class="alpha-btn" onclick="setAlpha('N')">N</button>
+          <button class="alpha-btn" onclick="setAlpha('M')">M</button>
+        </div>
+      </div>
     </div>
+
     <div class="field">
       <label>数量</label>
-      <input type="number" id="quantity" placeholder="1" value="1">
+      <div class="input-group">
+        <input type="number" id="quantity" placeholder="1" value="1">
+        <button class="mic-btn" onclick="speechToInput('quantity')">🎤 音声</button>
+      </div>
     </div>
-    <button id="manual-btn" onclick="saveRecordManual()" style="width:100%; padding:10px; background:#007bff; color:white; border:none; border-radius:4px; font-size:15px; margin-top:5px;">手動登録</button>
+
+    <button id="submit-btn" class="submit-btn" onclick="saveRecord()">登録してスプレッドシート保存</button>
+    <div id="status" class="status-msg"></div>
   </div>
 
   <h3>📝 作業履歴</h3>
@@ -82,321 +149,91 @@
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxEFPQJJD67mLmghxSS2Rl0JVtP9g_Mzo3cpHfiwrSBcels1BBud-4NGkXSWEWFdjWv/exec";
     
-    let currentStep = 0;
-    let listenTimer = null;
-    let isListening = false;
-    let isSaving = false;
-    
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
 
-    const ALPHA_MAP = [
-      { keys: ['シー', 'チャーリー', 'チャー', 'しー', '四', '市', 'C'], val: 'C' },
-      { keys: ['エー', 'アルファ', 'アリス', 'えー', 'A'], val: 'A' },
-      { keys: ['ビー', 'ブラボー', 'バナナ', 'びー', 'B'], val: 'B' },
-      { keys: ['ディー', 'デルタ', 'デンマーク', 'でぃー', 'D'], val: 'D' },
-      { keys: ['イー', 'エコー', 'いー', 'E'], val: 'E' },
-      { keys: ['エフ', 'フォックス', '富士', 'えふ', 'F'], val: 'F' }
-    ];
+    // アルファベットキーを押した時の処理（先頭英字を置換）
+    function setAlpha(letter) {
+      const locInput = document.getElementById('location');
+      let val = locInput.value.replace(/^[A-Z]/, ''); // 先頭に既存の英字があれば消去
+      locInput.value = letter + val;
+    }
 
-    if (SpeechRecognition) {
-      recognition = new SpeechRecognition();
+    // 各項目ごとの単発音声入力
+    function speechToInput(targetId, digitLimit = null) {
+      if (!SpeechRecognition) return alert('お使いのブラウザは音声入力に対応していません');
+
+      const recognition = new SpeechRecognition();
       recognition.lang = 'ja-JP';
-      recognition.continuous = false;
       recognition.interimResults = false;
 
-      recognition.onresult = (event) => {
-        clearTimeout(listenTimer);
-        const text = event.results[0][0].transcript;
-        handleInput(text);
-      };
+      const targetEl = document.getElementById(targetId);
+      const btn = event.currentTarget;
+      btn.classList.add('recording');
+      btn.innerText = '🔴';
 
-      recognition.onerror = (event) => {
-        clearTimeout(listenTimer);
-        if(event.error === 'no-speech') {
-          haltProcess("応答がありませんでした");
-          return;
-        }
-        haltProcess("エラーが発生しました");
-      };
+      recognition.start();
 
-      recognition.onend = () => {
-        clearTimeout(listenTimer);
-        if (isListening) {
-          stopListen();
-        }
-      };
-    }
+      recognition.onresult = (e) => {
+        let text = e.results[0][0].transcript;
+        let raw = text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
+                      .replace(/\s+/g, '').toUpperCase();
 
-    function handleBtnClick() {
-      if (isSaving) return;
-      if (isListening) {
-        haltProcess("キャンセルしました");
-        return;
-      }
-      
-      if (document.getElementById('start-btn').classList.contains('error') || currentStep > 0) {
-        retryCurrentStep();
-      } else {
-        startDialogue();
-      }
-    }
-
-    // ★ 数字を「さん ろく ご いち よん に」のように1桁ずつひらがなに変換する関数
-    function convertDigitsToSpoken(str) {
-      const digitMap = {
-        '0': ' ぜろ ', '1': ' いち ', '2': ' に ', '3': ' さん ', '4': ' よん ',
-        '5': ' ご ', '6': ' ろく ', '7': ' なな ', '8': ' はち ', '9': ' きゅう '
-      };
-      return str.replace(/[0-9]/g, match => digitMap[match] || match);
-    }
-
-    // 音声読み上げ（速度を 0.8 に落としてゆっくり読み上げ）
-    function speak(text, callback, isConfirmation = false) {
-      window.speechSynthesis.cancel();
-      
-      // 確認読み上げ時は数字を1桁ずつ展開
-      const spokenText = isConfirmation ? convertDigitsToSpoken(text) : text;
-      
-      const uttr = new SpeechSynthesisUtterance(spokenText);
-      uttr.lang = 'ja-JP';
-      
-      // 速度設定: 確認読み上げ時は 0.8（ゆっくり）、通常は 1.0
-      uttr.rate = isConfirmation ? 0.8 : 1.0;
-      
-      uttr.onend = () => {
-        if (callback) {
-          setTimeout(() => { callback(); }, 600);
-        }
-      };
-      window.speechSynthesis.speak(uttr);
-    }
-
-    function listen() {
-      if (!recognition || isSaving) return;
-      try {
-        window.speechSynthesis.cancel();
-        recognition.stop();
-        
-        setTimeout(() => {
-          recognition.start();
-          isListening = true;
-          const btn = document.getElementById('start-btn');
-          btn.innerText = '🔴 音声を聞き取り中...（タップで中止）';
-          btn.className = 'voice-btn recording';
-
-          clearTimeout(listenTimer);
-          listenTimer = setTimeout(() => {
-            if (isListening) {
-              haltProcess("時間切れです。もう一度お試しください。");
-            }
-          }, 10000);
-        }, 100);
-
-      } catch (e) {
-        console.log("マイク起動エラー", e);
-        haltProcess("マイクの起動に失敗しました");
-      }
-    }
-
-    function stopListen() {
-      isListening = false;
-      clearTimeout(listenTimer);
-      if (recognition) {
-        try { recognition.stop(); } catch(e){}
-      }
-      if (!isSaving) {
-        const btn = document.getElementById('start-btn');
-        if (!btn.classList.contains('error')) {
-          btn.innerText = '▶ 対話スタート';
-          btn.className = 'voice-btn';
-        }
-      }
-    }
-
-    function haltProcess(msg) {
-      stopListen();
-      updateGuidance("⚠️ " + msg);
-      const btn = document.getElementById('start-btn');
-      btn.innerText = '↻ この項目をやり直す（タップ）';
-      btn.className = 'voice-btn error';
-      btn.disabled = false;
-    }
-
-    function retryCurrentStep() {
-      const btn = document.getElementById('start-btn');
-      btn.className = 'voice-btn';
-      btn.disabled = false;
-
-      if (currentStep === 1) askWorker();
-      else if (currentStep === 2) askMegaCode();
-      else if (currentStep === 3) askLocation();
-      else if (currentStep === 4) askQuantity();
-      else startDialogue();
-    }
-
-    function startDialogue() {
-      if (isSaving) return;
-      const btn = document.getElementById('start-btn');
-      btn.className = 'voice-btn';
-      btn.disabled = false;
-
-      const worker = document.getElementById('worker-name').value;
-      if (!worker) {
-        askWorker();
-      } else {
-        askMegaCode();
-      }
-    }
-
-    function askWorker() {
-      currentStep = 1;
-      highlightField('worker-name');
-      updateGuidance("👤 作業者名をどうぞ");
-      speak("作業者名をどうぞ", () => listen());
-    }
-
-    function askMegaCode() {
-      currentStep = 2;
-      highlightField('mega-code');
-      updateGuidance("📦 MEGAコード（数字6桁）をどうぞ");
-      speak("メガコードは？", () => listen());
-    }
-
-    function askLocation() {
-      currentStep = 3;
-      highlightField('location');
-      updateGuidance("📍 格納ロケーション（例: シー 10225）");
-      speak("ロケーションは？", () => listen());
-    }
-
-    function askQuantity() {
-      currentStep = 4;
-      highlightField('quantity');
-      updateGuidance("🔢 数量をどうぞ（デフォルト: 1）");
-      speak("数量は？", () => listen());
-    }
-
-    function parseLocationText(text) {
-      let str = text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
-                    .replace(/\s+/g, '')
-                    .toUpperCase();
-
-      ALPHA_MAP.forEach(item => {
-        item.keys.forEach(key => {
-          if (str.includes(key.toUpperCase()) || text.includes(key)) {
-            str = str.replace(key.toUpperCase(), item.val);
+        if (targetId === 'worker-name') {
+          targetEl.value = text.replace(/(です|と言います|さん)/g, '').trim();
+          updateWorkerDisplay(targetEl.value);
+        } else if (digitLimit) {
+          const match = raw.match(new RegExp(`[0-9]{${digitLimit}}`)) || raw.match(/[0-9]+/);
+          if (match) targetEl.value = match[0];
+        } else {
+          // ロケーションで数字が喋られた場合、入力済みの英字をそのまま残す
+          const currentAlpha = targetEl.value.match(/^[A-Z]/);
+          const digits = raw.match(/[0-9]+/);
+          if (currentAlpha && digits) {
+            targetEl.value = currentAlpha[0] + digits[0];
+          } else {
+            targetEl.value = raw;
           }
-        });
-      });
+        }
+      };
 
-      const match = str.match(/[A-Z][0-9]{5}/) || str.match(/[A-Z0-9]{6}/);
-      return match ? match[0] : null;
+      recognition.onerror = recognition.onend = () => {
+        btn.classList.remove('recording');
+        btn.innerText = '🎤 音声';
+      };
     }
 
-    function handleInput(text) {
-      stopListen();
-      let raw = text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
-                    .replace(/\s+/g, '')
-                    .toUpperCase();
-
-      if (currentStep === 1) { 
-        const name = text.replace(/(です|と言います|さん)/g, '').trim();
-        if(name.length > 0) {
-          document.getElementById('worker-name').value = name;
-          updateWorkerDisplay(name);
-          
-          currentStep = 0;
-          highlightField('');
-          updateGuidance(`👤 作業者を ${name} に設定しました。「▶ 対話スタート」を押してください`);
-          speak(`作業者を ${name} さんに設定しました。`);
-          
-          const btn = document.getElementById('start-btn');
-          btn.innerText = '▶ 対話スタート';
-          btn.className = 'voice-btn';
-        } else {
-          haltProcess("名前が認識できませんでした");
-          speak("名前が認識できませんでした。タップしてやり直してください");
-        }
-      } 
-      else if (currentStep === 2) { 
-        const match = raw.match(/[0-9]{6}/) || raw.match(/[0-9]{3,6}/);
-        if (match && match[0].length === 6) {
-          document.getElementById('mega-code').value = match[0];
-          askLocation();
-        } else {
-          haltProcess("6桁の数字が認識できませんでした");
-          speak("メガコードが認識できませんでした。タップしてやり直してください");
-        }
-      } 
-      else if (currentStep === 3) { 
-        const locResult = parseLocationText(text);
-        if (locResult) {
-          document.getElementById('location').value = locResult;
-          askQuantity();
-        } else {
-          haltProcess("ロケーションが認識できませんでした");
-          speak("ロケーションが認識できませんでした。タップしてやり直してください");
-        }
-      } 
-      else if (currentStep === 4) { 
-        const match = raw.match(/[0-9]+/);
-        const qty = match ? match[0] : "1";
-        document.getElementById('quantity').value = qty;
-        
-        const mega = document.getElementById('mega-code').value;
-        const loc = document.getElementById('location').value;
-        
-        // ★ 完了時の読み上げテキスト（isConfirmation=true でゆっくり・1桁ずつ読み上げ）
-        const confirmMsg = `${mega}、${loc}、${qty}個で登録しました`;
-        speak(confirmMsg, async () => {
-          await saveRecord();
-        }, true);
-      }
-    }
-
-    function updateGuidance(msg) { document.getElementById('guidance').innerText = msg; }
-    function highlightField(id) {
-      ['worker-name', 'mega-code', 'location', 'quantity'].forEach(fId => {
-        const el = document.getElementById(fId);
-        if (fId === id) el.classList.add('active');
-        else el.classList.remove('active');
-      });
-    }
     function updateWorkerDisplay(name) {
       const display = document.getElementById('worker-display');
-      if (name) { display.innerText = `👤 作業者: ${name}`; display.classList.remove('unset'); }
+      display.innerText = name ? `👤 作業者: ${name}` : '👤 作業者: 未設定';
     }
 
-    async function saveRecordManual() {
-      await saveRecord();
-    }
+    document.getElementById('worker-name').addEventListener('input', (e) => {
+      updateWorkerDisplay(e.target.value);
+    });
 
+    // スプレッドシート保存処理
     async function saveRecord() {
       const worker = document.getElementById('worker-name').value;
       const mega = document.getElementById('mega-code').value;
       const loc = document.getElementById('location').value;
       const qty = document.getElementById('quantity').value;
-      if (!worker || !mega || !loc || !qty) return;
 
-      isSaving = true;
-      const startBtn = document.getElementById('start-btn');
-      const manualBtn = document.getElementById('manual-btn');
-      
-      startBtn.innerText = '⏳ 保存中...';
-      startBtn.className = 'voice-btn saving';
-      startBtn.disabled = true;
-      manualBtn.disabled = true;
+      if (!worker) return alert('作業者名を入力してください');
+      if (mega.length !== 6) return alert('MEGAコードは数字6桁で入力してください');
+      if (loc.length !== 6) return alert('格納ロケは英数6桁（例: C10225）で入力してください');
+      if (!qty) return alert('数量を入力してください');
 
-      updateGuidance("☁️ スプレッドシートへ送信中...");
+      const submitBtn = document.getElementById('submit-btn');
+      const statusEl = document.getElementById('status');
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = '⏳ 保存中...';
+      statusEl.style.color = '#007bff';
+      statusEl.innerText = '☁️ スプレッドシートへ送信中...';
 
       const now = new Date();
       const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
       const fullDateStr = now.toLocaleString('ja-JP');
-
-      const statusEl = document.getElementById('status');
-      statusEl.style.color = '#007bff';
-      statusEl.innerText = '☁️ スプレッドシートへ送信中...';
 
       try {
         if (GAS_URL) {
@@ -419,21 +256,13 @@
         document.getElementById('location').value = '';
         document.getElementById('quantity').value = '1';
 
-        currentStep = 0;
-        highlightField('');
-        updateGuidance("✅ 登録完了！「▶ 対話スタート」を押してください");
-
       } catch (err) {
-        console.error("保存エラー:", err);
         statusEl.style.color = '#dc3545';
-        statusEl.innerText = '❌ シート送信失敗';
-        updateGuidance("⚠️ 保存に失敗しました。もう一度お試しください。");
+        statusEl.innerText = '❌ 送信失敗';
+        alert('スプレッドシートへの保存に失敗しました');
       } finally {
-        isSaving = false;
-        startBtn.innerText = '▶ 対話スタート';
-        startBtn.className = 'voice-btn';
-        startBtn.disabled = false;
-        manualBtn.disabled = false;
+        submitBtn.disabled = false;
+        submitBtn.innerText = '登録してスプレッドシート保存';
       }
     }
   </script>
