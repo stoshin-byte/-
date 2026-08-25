@@ -22,30 +22,36 @@
     .mic-btn { padding: 10px 14px; background: #17a2b8; color: white; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
     .mic-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
 
-    /* A~Z キーボードレイアウト */
+    /* A~Z アルファベット順（均等グリッド配置） */
     .keyboard-container {
       margin-top: 8px;
       background: #e9ecef;
-      padding: 6px;
+      padding: 8px;
       border-radius: 6px;
       border: 1px solid #ced4da;
+      display: grid;
+      /* 1行あたり6〜7個のボタンを完全均等幅で配置 */
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
     }
-    .kb-row { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
-    .kb-row:last-child { margin-bottom: 0; }
+
     .alpha-btn {
-      flex: 1;
-      padding: 10px 0;
+      width: 100%;
+      height: 42px; /* ボタンの高さを統一 */
       background: white;
       border: 1px solid #adb5bd;
       border-radius: 4px;
       font-weight: bold;
-      font-size: 15px;
+      font-size: 16px;
       cursor: pointer;
       color: #212529;
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       touch-action: manipulation;
+      box-sizing: border-box;
     }
-    .alpha-btn:active { background: #007bff; color: white; }
+    .alpha-btn:active { background: #007bff; color: white; border-color: #0056b3; }
 
     .submit-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px; }
     .submit-btn:disabled { background: #6c757d !important; cursor: not-allowed; }
@@ -91,40 +97,34 @@
         <button class="mic-btn" onclick="speechToInput('location')">🎤 音声</button>
       </div>
 
-      <!-- A〜Z 全26文字キーボード -->
+      <!-- A〜Z アルファベット順配置（高さ・幅統一） -->
       <div class="keyboard-container">
-        <div class="kb-row">
-          <button class="alpha-btn" onclick="setAlpha('Q')">Q</button>
-          <button class="alpha-btn" onclick="setAlpha('W')">W</button>
-          <button class="alpha-btn" onclick="setAlpha('E')">E</button>
-          <button class="alpha-btn" onclick="setAlpha('R')">R</button>
-          <button class="alpha-btn" onclick="setAlpha('T')">T</button>
-          <button class="alpha-btn" onclick="setAlpha('Y')">Y</button>
-          <button class="alpha-btn" onclick="setAlpha('U')">U</button>
-          <button class="alpha-btn" onclick="setAlpha('I')">I</button>
-          <button class="alpha-btn" onclick="setAlpha('O')">O</button>
-          <button class="alpha-btn" onclick="setAlpha('P')">P</button>
-        </div>
-        <div class="kb-row">
-          <button class="alpha-btn" onclick="setAlpha('A')">A</button>
-          <button class="alpha-btn" onclick="setAlpha('S')">S</button>
-          <button class="alpha-btn" onclick="setAlpha('D')">D</button>
-          <button class="alpha-btn" onclick="setAlpha('F')">F</button>
-          <button class="alpha-btn" onclick="setAlpha('G')">G</button>
-          <button class="alpha-btn" onclick="setAlpha('H')">H</button>
-          <button class="alpha-btn" onclick="setAlpha('J')">J</button>
-          <button class="alpha-btn" onclick="setAlpha('K')">K</button>
-          <button class="alpha-btn" onclick="setAlpha('L')">L</button>
-        </div>
-        <div class="kb-row">
-          <button class="alpha-btn" onclick="setAlpha('Z')">Z</button>
-          <button class="alpha-btn" onclick="setAlpha('X')">X</button>
-          <button class="alpha-btn" onclick="setAlpha('C')">C</button>
-          <button class="alpha-btn" onclick="setAlpha('V')">V</button>
-          <button class="alpha-btn" onclick="setAlpha('B')">B</button>
-          <button class="alpha-btn" onclick="setAlpha('N')">N</button>
-          <button class="alpha-btn" onclick="setAlpha('M')">M</button>
-        </div>
+        <button class="alpha-btn" onclick="setAlpha('A')">A</button>
+        <button class="alpha-btn" onclick="setAlpha('B')">B</button>
+        <button class="alpha-btn" onclick="setAlpha('C')">C</button>
+        <button class="alpha-btn" onclick="setAlpha('D')">D</button>
+        <button class="alpha-btn" onclick="setAlpha('E')">E</button>
+        <button class="alpha-btn" onclick="setAlpha('F')">F</button>
+        <button class="alpha-btn" onclick="setAlpha('G')">G</button>
+        <button class="alpha-btn" onclick="setAlpha('H')">H</button>
+        <button class="alpha-btn" onclick="setAlpha('I')">I</button>
+        <button class="alpha-btn" onclick="setAlpha('J')">J</button>
+        <button class="alpha-btn" onclick="setAlpha('K')">K</button>
+        <button class="alpha-btn" onclick="setAlpha('L')">L</button>
+        <button class="alpha-btn" onclick="setAlpha('M')">M</button>
+        <button class="alpha-btn" onclick="setAlpha('N')">N</button>
+        <button class="alpha-btn" onclick="setAlpha('O')">O</button>
+        <button class="alpha-btn" onclick="setAlpha('P')">P</button>
+        <button class="alpha-btn" onclick="setAlpha('Q')">Q</button>
+        <button class="alpha-btn" onclick="setAlpha('R')">R</button>
+        <button class="alpha-btn" onclick="setAlpha('S')">S</button>
+        <button class="alpha-btn" onclick="setAlpha('T')">T</button>
+        <button class="alpha-btn" onclick="setAlpha('U')">U</button>
+        <button class="alpha-btn" onclick="setAlpha('V')">V</button>
+        <button class="alpha-btn" onclick="setAlpha('W')">W</button>
+        <button class="alpha-btn" onclick="setAlpha('X')">X</button>
+        <button class="alpha-btn" onclick="setAlpha('Y')">Y</button>
+        <button class="alpha-btn" onclick="setAlpha('Z')">Z</button>
       </div>
     </div>
 
@@ -151,14 +151,12 @@
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    // アルファベットキーを押した時の処理（先頭英字を置換）
     function setAlpha(letter) {
       const locInput = document.getElementById('location');
-      let val = locInput.value.replace(/^[A-Z]/, ''); // 先頭に既存の英字があれば消去
+      let val = locInput.value.replace(/^[A-Z]/, ''); // 先頭の英字を置換
       locInput.value = letter + val;
     }
 
-    // 各項目ごとの単発音声入力
     function speechToInput(targetId, digitLimit = null) {
       if (!SpeechRecognition) return alert('お使いのブラウザは音声入力に対応していません');
 
@@ -185,7 +183,6 @@
           const match = raw.match(new RegExp(`[0-9]{${digitLimit}}`)) || raw.match(/[0-9]+/);
           if (match) targetEl.value = match[0];
         } else {
-          // ロケーションで数字が喋られた場合、入力済みの英字をそのまま残す
           const currentAlpha = targetEl.value.match(/^[A-Z]/);
           const digits = raw.match(/[0-9]+/);
           if (currentAlpha && digits) {
@@ -211,7 +208,6 @@
       updateWorkerDisplay(e.target.value);
     });
 
-    // スプレッドシート保存処理
     async function saveRecord() {
       const worker = document.getElementById('worker-name').value;
       const mega = document.getElementById('mega-code').value;
