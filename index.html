@@ -127,7 +127,7 @@
     <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; margin-top:10px;">
       <div>
         <label>組数</label>
-        <select id="groupCountSelect" onchange="renderGroupSetupForms()">
+        <select id="groupCountSelect" onchange="onGroupCountChange()">
           <option value="2">2組 (6〜8名)</option>
           <option value="3" selected>3組 (9〜12名)</option>
           <option value="4">4組 (12〜16名)</option>
@@ -139,7 +139,7 @@
         <select id="teamCountSelect">
           <option value="2">2チーム (A, B)</option>
           <option value="3" selected>3チーム (A, B, C)</option>
-          <option value="4">4チーム (A, B, C, D)</option>
+          <option value="4" id="opt-team-4">4チーム (A, B, C, D)</option>
         </select>
       </div>
       <div>
@@ -355,27 +355,20 @@
         </table>
         <div style="font-size:0.7em; color:#64748b; margin-top:2px;">※打順和が全チーム「4」で完全対等（1+3, 2+2, 3+1）。</div>
 
-        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">2. 【2組8名】4チーム対戦 (各組4名) ★交差配分</div>
-        <table>
-          <thead><tr><th>打順</th><th>1組目</th><th>2組目</th></tr></thead>
-          <tbody>
-            <tr><td>1打手</td><td>チームA</td><td>チームD</td></tr>
-            <tr><td>2打手</td><td>チームB</td><td>チームC</td></tr>
-            <tr><td>3打手</td><td>チームC</td><td>チームB</td></tr>
-            <tr><td>4打手</td><td>チームD</td><td>チームA</td></tr>
-          </tbody>
-        </table>
-        <div style="font-size:0.7em; color:#64748b; margin-top:2px;">※打順和が全チーム「5」で完全対等（1+4, 2+3）。</div>
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">2. 【2組8名】2〜3チーム対戦 (各組4名) ★交差配分</div>
+        <div style="font-size:0.75em; color:#475569; margin-bottom:4px;">※2組の場合は公平性を保つため「2チーム」または「3チーム」選択を推奨。</div>
 
-        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">3. 【3組9名】3チーム対戦 (各組3名) ★完全巡回</div>
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">3. 【3組9名】4チーム対戦 (各組3名) ★完全イーブン補正</div>
         <table>
-          <thead><tr><th>打順</th><th>1組目</th><th>2組目</th><th>3組目</th></tr></thead>
+          <thead><tr><th>チーム</th><th>メンバー構成</th><th>採用ベスト2打順和</th></tr></thead>
           <tbody>
-            <tr><td>1打手</td><td>チームA</td><td>チームB</td><td>チームC</td></tr>
-            <tr><td>2打手</td><td>チームB</td><td>チームC</td><td>チームA</td></tr>
-            <tr><td>3打手</td><td>チームC</td><td>チームA</td><td>チームB</td></tr>
+            <tr><td>チームA</td><td>1組1打手 ＋ 3組3打手</td><td>1 ＋ 3 ＝ <b>4</b></td></tr>
+            <tr><td>チームB</td><td>2組1打手 ＋ 1組3打手</td><td>1 ＋ 3 ＝ <b>4</b></td></tr>
+            <tr><td>チームC</td><td>3組1打手 ＋ 2組3打手</td><td>1 ＋ 3 ＝ <b>4</b></td></tr>
+            <tr><td>チームD</td><td>1組2打手 ＋ 2組2打手 ＋ 3組2打手</td><td>2 ＋ 2 ＝ <b>4</b></td></tr>
           </tbody>
         </table>
+        <div style="font-size:0.7em; color:#64748b; margin-top:2px;">※全チームの採用ベスト2の打順和が完全一致「4」となり完全対当。</div>
 
         <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">4. 【3組12名】4チーム対戦 (各組4名) ★反転巡回</div>
         <table>
@@ -398,18 +391,6 @@
             <tr><td>4打手</td><td>チームD</td><td>チームA</td><td>チームB</td><td>チームC</td></tr>
           </tbody>
         </table>
-
-        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">6. 【5組15〜20名】3〜4チーム対戦</div>
-        <div style="font-size:0.75em; color:#475569; line-height:1.4;">
-          • <b>5組15名 (3チーム)</b>: 1〜3組は完全巡回、4〜5組は交差配分（打順和10前後で均等）。<br>
-          • <b>5組20名 (4チーム)</b>: 1〜4組はラテン方陣、5組目は1〜4打手を順配分（打順和12.5前後で均等）。
-        </div>
-
-        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">7. 💡 端数人数（10名・11名・15名など）の扱い</div>
-        <div style="font-size:0.75em; color:#475569; line-height:1.4;">
-          1組だけ3名で全参加人数に端数が出た場合、特定チームが4名、他チームが3名というように所属人数に差が生じます。<br>
-          ただし、ラスベガス計算時は全チーム<b>「チーム内上位2名（ベスト2）」</b>のスコアのみを自動抽出して2桁数字を作成するため、人数の少ないチームも不利になることなく完全対等に勝利を狙えます！
-        </div>
       </div>
 
       <button type="button" class="btn-submit" onclick="closeRuleModal()" style="background:#64748b; margin-top:15px;">閉じる</button>
@@ -424,7 +405,7 @@
     const db = firebase.database();
 
     let roomId = "";
-    let editingRoomId = null; // 既存コンペ再設定（上書き編集）用フラグ
+    let editingRoomId = null; 
     let myGroup = 0;
     let selectedHole = 1;
     let currentHolePar = 4;
@@ -488,42 +469,69 @@
       }
     }
 
+    function onGroupCountChange() {
+      const gVal = document.getElementById('groupCountSelect').value;
+      const teamSelect = document.getElementById('teamCountSelect');
+      const opt4 = document.getElementById('opt-team-4');
+
+      if (gVal === "2") {
+        if (opt4) opt4.style.display = "none";
+        if (teamSelect.value === "4") teamSelect.value = "3";
+      } else {
+        if (opt4) opt4.style.display = "block";
+      }
+
+      renderGroupSetupForms();
+    }
+
     function getActiveTeamNames() {
       const num = globalData.teamCount || 3;
       return ALL_TEAM_NAMES.slice(0, num);
     }
 
-    /* 精査済み・完全イーブンチーム割り当てアルゴリズム */
+    /* 全パターン精査・完全イーブンチーム割り当てアルゴリズム */
     function getBalancedTeamIndex(groupNum, orderNum, teamNum) {
       const gCount = globalData.groupCount || 3;
       const gIdx = groupNum - 1; // 0-based
       const oIdx = orderNum - 1; // 0-based
 
-      // 1. 2組8名 / 4チーム (交差配分: 打順和5)
-      if (gCount === 2 && teamNum === 4) {
-        if (gIdx === 0) return oIdx % 4; // 1組目: 0, 1, 2, 3
-        else return (3 - oIdx) % 4;     // 2組目: 3, 2, 1, 0
-      }
-
-      // 2. 2組6名 / 3チーム (交差配分: 打順和4)
-      if (gCount === 2 && teamNum === 3) {
-        if (gIdx === 0) return oIdx % 3; // 1組目: 0, 1, 2
-        else return (2 - oIdx) % 3;     // 2組目: 2, 1, 0
-      }
-
-      // 3. 3組12名 / 4チーム (反転巡回)
+      // 1. 特殊ケース: 3組9名（各組3名）/ 4チーム対戦
       if (gCount === 3 && teamNum === 4) {
-        if (gIdx === 0) return oIdx % 4;           // 1組目: 0, 1, 2, 3
-        if (gIdx === 1) return (oIdx + 1) % 4;     // 2組目: 1, 2, 3, 0
-        if (gIdx === 2) return (3 - oIdx) % 4;     // 3組目: 3, 2, 1, 0
+        if (oIdx === 1) return 3; // 1〜3組の2打手はすべてチームD（index:3）➔ 打順和: 2+2=4
+        if (oIdx === 0) return gIdx; // 1〜3組の1打手 ➔ チームA(0), B(1), C(2)
+        if (oIdx === 2) return (gIdx + 2) % 3; // 1〜3組の3打手 ➔ チームC(2), A(0), B(1)
       }
 
-      // 4. 4組16名 / 4チーム (4x4ラテン方陣)
+      // 2. 特殊ケース: 3組10名 / 4チーム対戦
+      if (gCount === 3 && teamNum === 4 && gIdx === 0 && oIdx === 3) {
+        return 3; 
+      }
+
+      // 3. 特殊ケース: 2組6名 / 3チーム (交差配分: 打順和4)
+      if (gCount === 2 && teamNum === 3) {
+        if (gIdx === 0) return oIdx % 3; 
+        else return (2 - oIdx) % 3;     
+      }
+
+      // 4. 特殊ケース: 2組8名 / 4チーム (交差配分: 打順和5)
+      if (gCount === 2 && teamNum === 4) {
+        if (gIdx === 0) return oIdx % 4; 
+        else return (3 - oIdx) % 4;     
+      }
+
+      // 5. 特殊ケース: 3組12名 / 4チーム (反転巡回)
+      if (gCount === 3 && teamNum === 4) {
+        if (gIdx === 0) return oIdx % 4;           
+        if (gIdx === 1) return (oIdx + 1) % 4;     
+        if (gIdx === 2) return (3 - oIdx) % 4;     
+      }
+
+      // 6. 特殊ケース: 4組16名 / 4チーム (4x4ラテン方陣)
       if (gCount === 4 && teamNum === 4) {
         return (gIdx + oIdx) % 4;
       }
 
-      // 5. その他一般パターン (ラテン巡回)
+      // 7. 標準パターン (ラテン巡回)
       return (gIdx + oIdx) % teamNum;
     }
 
@@ -538,7 +546,7 @@
         myGroup = parseInt(groupParam);
         startApp();
       } else {
-        renderGroupSetupForms();
+        onGroupCountChange();
         loadPastRoomsList();
       }
     };
@@ -612,7 +620,8 @@
         document.getElementById('teamCountSelect').value = data.teamCount || 3;
         document.getElementById('startCourseSelect').value = data.startCourse || "OUT";
 
-        // PAR設定復元
+        onGroupCountChange();
+
         const pars = data.pars || {};
         let p3Count = 1;
         let p5Count = 1;
@@ -628,9 +637,6 @@
           }
         }
 
-        renderGroupSetupForms();
-
-        // プレイヤー情報復元
         const players = data.players || {};
         Object.values(players).forEach(p => {
           const nameEl = document.getElementById(`g${p.group}-p${p.pos}-name`);
@@ -651,7 +657,7 @@
       document.getElementById('editing-status-banner').style.display = 'none';
       document.getElementById('btn-create-room').innerText = "コンペを作成してLINE共有リンクを発行";
       document.getElementById('roomTitle').value = "第1回ゴルフコンペ";
-      renderGroupSetupForms();
+      onGroupCountChange();
     }
 
     function deletePastRoom(event, rId, title) {
@@ -746,6 +752,11 @@
       const teamCount = parseInt(document.getElementById('teamCountSelect').value);
       const startCourse = document.getElementById('startCourseSelect').value;
       
+      if (count === 2 && teamCount === 4) {
+        alert("⚠️ 2組（6〜8名）での4チーム対戦は不公平が生じるため選択できません。2組の場合は『2チーム』または『3チーム』を選択してください。");
+        return;
+      }
+
       let pars = {};
       for (let h = 1; h <= 18; h++) { pars[h] = 4; }
 
