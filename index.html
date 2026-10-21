@@ -29,6 +29,10 @@
 
     .btn-submit { background: #27ae60; color: white; font-weight: bold; padding: 12px; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; font-size: 1em; }
     .btn-submit:hover { background: #219150; }
+    .btn-draft { background: #d97706; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+    .btn-draft:hover { background: #b45309; }
+    .btn-load-draft { background: #0284c7; color: white; font-weight: bold; padding: 8px; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 12px; }
+
     .btn-edit-unlock { background: #d97706; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 10px; }
 
     .btn-rule-modal { background: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em; width: auto; margin-top: 0; }
@@ -55,8 +59,8 @@
     .player-card-setup { background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin-bottom: 6px; }
     .player-inputs-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 6px; }
 
-    .btn-move-order { width: auto !important; padding: 3px 8px !important; font-size: 0.75em !important; font-weight: bold !important; background: #0284c7 !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; margin-top: 0 !important; }
-    .btn-move-order:hover { background: #0369a1 !important; }
+    .order-btn-bar { display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; border: 1px solid #cbd5e1; }
+    .btn-move-action { width: auto !important; padding: 4px 10px !important; font-size: 0.75em !important; font-weight: bold !important; background: #0284c7 !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; margin: 0 !important; }
 
     .history-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 12px; }
     .history-hole-title { font-weight: bold; color: #1e3a8a; font-size: 0.85em; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; }
@@ -85,12 +89,8 @@
     .past-room-item:hover { background: #e2e8f0; }
 
     .btn-action-past { font-size: 0.75em; font-weight: bold; padding: 6px 8px; border: none; border-radius: 6px; cursor: pointer; width: auto; margin-top: 0; }
-    .btn-load-past { background: #0284c7; color: white; }
-    .btn-load-past:hover { background: #0369a1; }
     .btn-delete-past { background: #ef4444; color: white; }
     .btn-delete-past:hover { background: #dc2626; }
-
-    .editing-banner { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 8px 12px; border-radius: 6px; font-size: 0.85em; font-weight: bold; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
 
     .locked-container { opacity: 0.5; pointer-events: none; }
     .unreachable-box { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 0.85em; margin-bottom: 10px; }
@@ -114,12 +114,11 @@
 
   <!-- 幹事用 設定画面 -->
   <div class="card" id="setup-sec">
-    <h2>👑 幹事用 コンペ新規作成・編集</h2>
+    <h2>👑 幹事用 コンペ新規作成</h2>
 
-    <div id="editing-status-banner" class="editing-banner" style="display:none;">
-      <span>✏️ 既存コンペ「<span id="editing-room-title-name"></span>」を編集中</span>
-      <button type="button" onclick="cancelEditingRoom()" style="width:auto; padding:2px 8px; font-size:0.8em; background:#cbd5e1; border:none; border-radius:4px; cursor:pointer;">新規作成に戻る</button>
-    </div>
+    <button type="button" class="btn-load-draft" id="btn-has-draft" onclick="loadDraftData()" style="display:none;">
+      📂 前日に仮登録した下書きデータを読み込む
+    </button>
     
     <label>コンペ名 / ルーム名</label>
     <input type="text" id="roomTitle" value="第1回ゴルフコンペ" placeholder="例: サークルコンペ">
@@ -175,10 +174,13 @@
 
     <div id="group-inputs-container" style="margin-top:15px;"></div>
 
-    <button type="button" class="btn-submit" id="btn-create-room" onclick="createTournament()">コンペを作成してLINE共有リンクを発行</button>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+      <button type="button" class="btn-draft" onclick="saveDraftData()">💾 前日用：下書き保存 (仮登録)</button>
+      <button type="button" class="btn-submit" onclick="createTournament()">🚀 本登録して共有リンク発行</button>
+    </div>
 
     <div style="margin-top:25px; border-top:2px solid #cbd5e1; padding-top:12px;">
-      <h2>📚 過去のコンペ履歴（再設定・編集・確認）</h2>
+      <h2>📚 過去のコンペ履歴（過去の記録）</h2>
       <div id="past-rooms-list" style="font-size:0.85em; color:#64748b;">(読込中...)</div>
     </div>
   </div>
@@ -290,14 +292,12 @@
         <button type="button" onclick="closeRuleModal()" style="width:auto; padding:4px 8px; font-weight:bold; background:#e2e8f0; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;">✕ 閉じる</button>
       </div>
 
-      <!-- モーダル内タブ切替ボタン -->
       <div class="modal-nav-tabs">
         <button type="button" class="btn-modal-tab active" id="btn-rule-tab-basic" onclick="switchRuleTab('basic')">🏆 基本ルール</button>
         <button type="button" class="btn-modal-tab" id="btn-rule-tab-vegas" onclick="switchRuleTab('vegas')">🎰 ラスベガス詳細</button>
         <button type="button" class="btn-modal-tab" id="btn-rule-tab-teams" onclick="switchRuleTab('teams')">👥 チーム分け</button>
       </div>
 
-      <!-- タブ1: 基本ルール -->
       <div id="rule-tab-basic-content" style="font-size:0.8em; line-height:1.5; color:#334155;">
         <div style="font-weight:bold; color:#1e3a8a;">🏆 1. 総合順位の仕組み</div>
         <div>総合P ＝ スコアP ＋ ゲームP ＋ チームP（完全ゼロサム）</div>
@@ -319,7 +319,6 @@
         </ul>
       </div>
 
-      <!-- タブ2: ラスベガス詳細ガイド -->
       <div id="rule-tab-vegas-content" style="display:none; font-size:0.8em; line-height:1.5; color:#334155;">
         <div style="font-weight:bold; color:#1e3a8a; font-size:0.95em;">🎰 ラスベガス対戦の計算ルール</div>
 
@@ -342,7 +341,6 @@
         </ul>
       </div>
 
-      <!-- タブ3: ラスベガスのチーム分けパターン -->
       <div id="rule-tab-teams-content" style="display:none; font-size:0.78em; line-height:1.45; color:#334155;">
         <div style="font-weight:bold; color:#1e3a8a; margin-bottom:4px;">1. 【2組6名】3チーム対戦 (各組3名) ★交差配分</div>
         <table>
@@ -353,9 +351,8 @@
             <tr><td>3打手</td><td>チームC</td><td>チームA</td></tr>
           </tbody>
         </table>
-        <div style="font-size:0.7em; color:#64748b; margin-top:2px;">※打順和が全チーム「4」で完全対等（1+3, 2+2, 3+1）。</div>
 
-        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">2. 【2組8名】2〜3チーム対戦 (各組4名) ★交差配分</div>
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">2. 【2組8名】2〜3チーム対戦 (各組4名)</div>
         <div style="font-size:0.75em; color:#475569; margin-bottom:4px;">※2組の場合は公平性を保つため「2チーム」または「3チーム」選択を推奨。</div>
 
         <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">3. 【3組9名】4チーム対戦 (各組3名) ★完全イーブン補正</div>
@@ -368,7 +365,6 @@
             <tr><td>チームD</td><td>1組2打手 ＋ 2組2打手 ＋ 3組2打手</td><td>2 ＋ 2 ＝ <b>4</b></td></tr>
           </tbody>
         </table>
-        <div style="font-size:0.7em; color:#64748b; margin-top:2px;">※全チームの採用ベスト2の打順和が完全一致「4」となり完全対当。</div>
 
         <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">4. 【3組12名】4チーム対戦 (各組4名) ★反転巡回</div>
         <table>
@@ -405,7 +401,6 @@
     const db = firebase.database();
 
     let roomId = "";
-    let editingRoomId = null; 
     let myGroup = 0;
     let selectedHole = 1;
     let currentHolePar = 4;
@@ -495,48 +490,43 @@
       const gIdx = groupNum - 1; // 0-based
       const oIdx = orderNum - 1; // 0-based
 
-      // 1. 特殊ケース: 3組9名（各組3名）/ 4チーム対戦
       if (gCount === 3 && teamNum === 4) {
-        if (oIdx === 1) return 3; // 1〜3組の2打手はすべてチームD（index:3）➔ 打順和: 2+2=4
-        if (oIdx === 0) return gIdx; // 1〜3組の1打手 ➔ チームA(0), B(1), C(2)
-        if (oIdx === 2) return (gIdx + 2) % 3; // 1〜3組の3打手 ➔ チームC(2), A(0), B(1)
+        if (oIdx === 1) return 3; 
+        if (oIdx === 0) return gIdx; 
+        if (oIdx === 2) return (gIdx + 2) % 3; 
       }
 
-      // 2. 特殊ケース: 3組10名 / 4チーム対戦
       if (gCount === 3 && teamNum === 4 && gIdx === 0 && oIdx === 3) {
         return 3; 
       }
 
-      // 3. 特殊ケース: 2組6名 / 3チーム (交差配分: 打順和4)
       if (gCount === 2 && teamNum === 3) {
         if (gIdx === 0) return oIdx % 3; 
         else return (2 - oIdx) % 3;     
       }
 
-      // 4. 特殊ケース: 2組8名 / 4チーム (交差配分: 打順和5)
       if (gCount === 2 && teamNum === 4) {
         if (gIdx === 0) return oIdx % 4; 
         else return (3 - oIdx) % 4;     
       }
 
-      // 5. 特殊ケース: 3組12名 / 4チーム (反転巡回)
       if (gCount === 3 && teamNum === 4) {
         if (gIdx === 0) return oIdx % 4;           
         if (gIdx === 1) return (oIdx + 1) % 4;     
         if (gIdx === 2) return (3 - oIdx) % 4;     
       }
 
-      // 6. 特殊ケース: 4組16名 / 4チーム (4x4ラテン方陣)
       if (gCount === 4 && teamNum === 4) {
         return (gIdx + oIdx) % 4;
       }
 
-      // 7. 標準パターン (ラテン巡回)
       return (gIdx + oIdx) % teamNum;
     }
 
     window.onload = function() {
       initParDropdownOptions();
+      checkDraftExists();
+
       const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('room');
       const groupParam = urlParams.get('group');
@@ -571,6 +561,99 @@
       }
     }
 
+    /* 前日用: 下書き保存 (LocalStorage) */
+    function saveDraftData() {
+      const count = parseInt(document.getElementById('groupCountSelect').value);
+      let playersData = [];
+
+      for (let g = 1; g <= count; g++) {
+        for (let p = 1; p <= 4; p++) {
+          const nameInput = document.getElementById(`g${g}-p${p}-name`);
+          const hdcpInput = document.getElementById(`g${g}-p${p}-hdcp`);
+          const ruleInput = document.getElementById(`g${g}-p${p}-hdcpRule`);
+
+          playersData.push({
+            group: g,
+            pos: p,
+            name: nameInput ? nameInput.value : '',
+            hdcp: hdcpInput ? hdcpInput.value : '0',
+            hdcpRule: ruleInput ? ruleInput.value : 'none'
+          });
+        }
+      }
+
+      let par3s = [];
+      let par5s = [];
+      for (let i = 1; i <= 4; i++) {
+        par3s.push(document.getElementById(`par3-select-${i}`).value);
+        par5s.push(document.getElementById(`par5-select-${i}`).value);
+      }
+
+      const draftObj = {
+        title: document.getElementById('roomTitle').value,
+        groupCount: count,
+        teamCount: document.getElementById('teamCountSelect').value,
+        startCourse: document.getElementById('startCourseSelect').value,
+        par3s: par3s,
+        par5s: par5s,
+        players: playersData,
+        savedAt: new Date().toLocaleString()
+      };
+
+      localStorage.setItem('golf_app_draft', JSON.stringify(draftObj));
+      alert(`下書きデータ（前日用）を端末に保存しました！\n当日の朝にこの画面を開くと復元できます。`);
+      checkDraftExists();
+    }
+
+    function checkDraftExists() {
+      const draft = localStorage.getItem('golf_app_draft');
+      const btn = document.getElementById('btn-has-draft');
+      if (draft && btn) {
+        const draftObj = JSON.parse(draft);
+        btn.style.display = 'block';
+        btn.innerText = `📂 前日保存した下書きを読み込む (${draftObj.savedAt})`;
+      }
+    }
+
+    function loadDraftData() {
+      const draftStr = localStorage.getItem('golf_app_draft');
+      if (!draftStr) return;
+
+      const draftObj = JSON.parse(draftStr);
+
+      document.getElementById('roomTitle').value = draftObj.title || '';
+      document.getElementById('groupCountSelect').value = draftObj.groupCount || 3;
+      document.getElementById('teamCountSelect').value = draftObj.teamCount || 3;
+      document.getElementById('startCourseSelect').value = draftObj.startCourse || 'OUT';
+
+      onGroupCountChange();
+
+      if (draftObj.par3s) {
+        for (let i = 1; i <= 4; i++) {
+          if (draftObj.par3s[i-1]) document.getElementById(`par3-select-${i}`).value = draftObj.par3s[i-1];
+        }
+      }
+      if (draftObj.par5s) {
+        for (let i = 1; i <= 4; i++) {
+          if (draftObj.par5s[i-1]) document.getElementById(`par5-select-${i}`).value = draftObj.par5s[i-1];
+        }
+      }
+
+      if (draftObj.players) {
+        draftObj.players.forEach(p => {
+          const nameEl = document.getElementById(`g${p.group}-p${p.pos}-name`);
+          const hdcpEl = document.getElementById(`g${p.group}-p${p.pos}-hdcp`);
+          const ruleEl = document.getElementById(`g${p.group}-p${p.pos}-hdcpRule`);
+
+          if (nameEl) nameEl.value = p.name || '';
+          if (hdcpEl) hdcpEl.value = p.hdcp || '0';
+          if (ruleEl) ruleEl.value = p.hdcpRule || 'none';
+        });
+      }
+
+      alert('前日の下書きデータを復元しました！\n当日の1H目の打順通りに「▲ 上へ」「▼ 下へ」ボタンで並び替えてから本発行してください。');
+    }
+
     function loadPastRoomsList() {
       const pastListEl = document.getElementById('past-rooms-list');
       db.ref('rooms').once('value', (snapshot) => {
@@ -593,7 +676,6 @@
                 <div style="font-size:0.75em; color:#64748b;">${dateStr} (${rData.groupCount || 3}組 / ${rData.teamCount || 3}チーム / ${pCount}名)</div>
               </div>
               <div style="display:flex; align-items:center; gap:6px;">
-                <button type="button" class="btn-action-past btn-load-past" onclick="loadRoomToSetup('${rId}')">⚙️ 再設定</button>
                 <button type="button" class="btn-action-past btn-delete-past" onclick="deletePastRoom(event, '${rId}', '${titleStr}')">🗑️ 削除</button>
                 <div onclick="openPastRoom('${rId}')" style="font-size:0.8em; font-weight:bold; color:#2563eb; cursor:pointer; margin-left:4px;">閲覧 ➔</div>
               </div>
@@ -603,71 +685,11 @@
       });
     }
 
-    /* 過去のコンペを再設定用フォームに読み込み */
-    function loadRoomToSetup(rId) {
-      db.ref(`rooms/${rId}`).once('value', (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
-
-        editingRoomId = rId;
-
-        document.getElementById('editing-status-banner').style.display = 'flex';
-        document.getElementById('editing-room-title-name').innerText = data.title || "コンペ";
-        document.getElementById('btn-create-room').innerText = "コンペ設定を上書き保存して共有リンク発行";
-
-        document.getElementById('roomTitle').value = data.title || "";
-        document.getElementById('groupCountSelect').value = data.groupCount || 3;
-        document.getElementById('teamCountSelect').value = data.teamCount || 3;
-        document.getElementById('startCourseSelect').value = data.startCourse || "OUT";
-
-        onGroupCountChange();
-
-        const pars = data.pars || {};
-        let p3Count = 1;
-        let p5Count = 1;
-
-        for (let h = 1; h <= 18; h++) {
-          if (pars[h] === 3 && p3Count <= 4) {
-            document.getElementById(`par3-select-${p3Count}`).value = h;
-            p3Count++;
-          }
-          if (pars[h] === 5 && p5Count <= 4) {
-            document.getElementById(`par5-select-${p5Count}`).value = h;
-            p5Count++;
-          }
-        }
-
-        const players = data.players || {};
-        
-        // プレイヤーのpos(打順)通りにフォームをセット
-        Object.values(players).forEach(p => {
-          const nameEl = document.getElementById(`g${p.group}-p${p.pos}-name`);
-          const hdcpEl = document.getElementById(`g${p.group}-p${p.pos}-hdcp`);
-          const ruleEl = document.getElementById(`g${p.group}-p${p.pos}-hdcpRule`);
-
-          if (nameEl) nameEl.value = p.name || "";
-          if (hdcpEl) hdcpEl.value = p.hdcp || 0;
-          if (ruleEl) ruleEl.value = p.hdcpRule || "none";
-        });
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-    }
-
-    function cancelEditingRoom() {
-      editingRoomId = null;
-      document.getElementById('editing-status-banner').style.display = 'none';
-      document.getElementById('btn-create-room').innerText = "コンペを作成してLINE共有リンクを発行";
-      document.getElementById('roomTitle').value = "第1回ゴルフコンペ";
-      onGroupCountChange();
-    }
-
     function deletePastRoom(event, rId, title) {
       event.stopPropagation();
       if (confirm(`「${title}」のコンペデータを完全に削除してもよろしいですか？\n※削除したデータは復元できません。`)) {
         db.ref(`rooms/${rId}`).remove().then(() => {
           alert('コンペデータを削除しました。');
-          if (editingRoomId === rId) cancelEditingRoom();
           loadPastRoomsList();
         }).catch((err) => {
           alert('削除処理でエラーが発生しました: ' + err.message);
@@ -687,7 +709,7 @@
       });
     }
 
-    /* 上へ・下へ ボタンでの並び替え処理 */
+    /* 並び替えボタン用関数 */
     function movePlayerOrder(g, p, dir) {
       const targetP = p + dir;
       if (targetP < 1 || targetP > 4) return;
@@ -727,11 +749,11 @@
           const isDefaultEmpty = (p === 4);
           html += `
             <div class="player-card-setup">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div class="order-btn-bar">
                 <span style="font-size:0.82em; font-weight:bold; color:#1e3a8a;">${p}打手 (P${p})</span>
                 <div style="display:flex; gap:6px;">
-                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, -1)">▲ 上へ</button>
-                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, 1)">▼ 下へ</button>
+                  <button type="button" class="btn-move-action" onclick="movePlayerOrder(${g}, ${p}, -1)">▲ 上へ</button>
+                  <button type="button" class="btn-move-action" onclick="movePlayerOrder(${g}, ${p}, 1)">▼ 下へ</button>
                 </div>
               </div>
               <div class="player-inputs-grid">
@@ -787,11 +809,7 @@
       par3Holes.forEach(h => pars[h] = 3);
       par5Holes.forEach(h => pars[h] = 5);
 
-      if (editingRoomId) {
-        roomId = editingRoomId;
-      } else {
-        roomId = "room-" + Math.random().toString(36).substring(2, 8);
-      }
+      roomId = "room-" + Math.random().toString(36).substring(2, 8);
       
       let players = {};
       let pCount = 0;
@@ -815,7 +833,7 @@
         }
       }
 
-      db.ref(`rooms/${roomId}`).update({
+      db.ref(`rooms/${roomId}`).set({
         title: title,
         groupCount: count,
         teamCount: teamCount,
@@ -824,10 +842,7 @@
         players: players,
         pars: pars
       }).then(() => {
-        alert(editingRoomId ? "コンペ設定（打順）を上書き保存しました！" : "コンペを新規作成しました！");
-        editingRoomId = null;
-        document.getElementById('editing-status-banner').style.display = 'none';
-        document.getElementById('btn-create-room').innerText = "コンペを作成してLINE共有リンクを発行";
+        alert("コンペを本発行いたしました！LINE共有リンクを送信してください。");
         renderShareButtons(count);
         loadPastRoomsList();
       }).catch((err) => {
