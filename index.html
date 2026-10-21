@@ -55,8 +55,8 @@
     .player-card-setup { background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin-bottom: 6px; }
     .player-inputs-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 6px; }
 
-    .btn-move-order { width: auto; padding: 4px 8px; font-size: 0.75em; font-weight: bold; background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; margin-top: 0; }
-    .btn-move-order:hover { background: #cbd5e1; }
+    .btn-move-order { width: auto !important; padding: 3px 8px !important; font-size: 0.75em !important; font-weight: bold !important; background: #0284c7 !important; color: white !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; margin-top: 0 !important; }
+    .btn-move-order:hover { background: #0369a1 !important; }
 
     .history-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 12px; }
     .history-hole-title { font-weight: bold; color: #1e3a8a; font-size: 0.85em; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; }
@@ -639,7 +639,7 @@
 
         const players = data.players || {};
         
-        // グループ・ポシションごとに順序(pos:1〜4)通りに並べて画面に入力
+        // プレイヤーのpos(打順)通りにフォームをセット
         Object.values(players).forEach(p => {
           const nameEl = document.getElementById(`g${p.group}-p${p.pos}-name`);
           const hdcpEl = document.getElementById(`g${p.group}-p${p.pos}-hdcp`);
@@ -687,6 +687,7 @@
       });
     }
 
+    /* 上へ・下へ ボタンでの並び替え処理 */
     function movePlayerOrder(g, p, dir) {
       const targetP = p + dir;
       if (targetP < 1 || targetP > 4) return;
@@ -698,6 +699,8 @@
       const targetNameEl = document.getElementById(`g${g}-p${targetP}-name`);
       const targetHdcpEl = document.getElementById(`g${g}-p${targetP}-hdcp`);
       const targetRuleEl = document.getElementById(`g${g}-p${targetP}-hdcpRule`);
+
+      if (!curNameEl || !targetNameEl) return;
 
       const tempName = curNameEl.value;
       const tempHdcp = curHdcpEl.value;
@@ -724,11 +727,11 @@
           const isDefaultEmpty = (p === 4);
           html += `
             <div class="player-card-setup">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <span style="font-size:0.8em; font-weight:bold; color:#1e3a8a;">${p}打手 (P${p})</span>
-                <div style="display:flex; gap:4px;">
-                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, -1)">🔼 上へ</button>
-                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, 1)">🔽 下へ</button>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:0.82em; font-weight:bold; color:#1e3a8a;">${p}打手 (P${p})</span>
+                <div style="display:flex; gap:6px;">
+                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, -1)">▲ 上へ</button>
+                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, 1)">▼ 下へ</button>
                 </div>
               </div>
               <div class="player-inputs-grid">
@@ -793,7 +796,6 @@
       let players = {};
       let pCount = 0;
 
-      // 画面上の動的な1〜4打手入力欄から最新順序通りに読み込んで保存
       for (let g = 1; g <= count; g++) {
         for (let p = 1; p <= 4; p++) {
           const nameInput = document.getElementById(`g${g}-p${p}-name`);
@@ -807,7 +809,7 @@
               hdcp: parseInt(hdcpInput.value) || 0,
               hdcpRule: ruleInput ? ruleInput.value : 'none',
               group: g,
-              pos: p // 入れ替え後の最新打順 (1, 2, 3, 4)
+              pos: p
             };
           }
         }
