@@ -3,263 +3,1705 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MEGAコード 格納記録</title>
+  <title>ゴルフコンペ リアルタイムスコア共有アプリ</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
   <style>
-    body { font-family: sans-serif; padding: 15px; max-width: 500px; margin: 0 auto; background: #f8f9fa; }
-    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+    body { font-family: sans-serif; padding: 12px; max-width: 700px; margin: 0 auto; background: #f4f6f8; color: #334155; }
+    .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
+    h1 { font-size: 1.25em; color: #1e293b; margin-top: 0; }
+    h2 { font-size: 1em; color: #1e3a8a; margin-bottom: 8px; border-bottom: 2px solid #3b82f6; padding-bottom: 4px; }
     
-    .worker-badge { 
-      background: #e3f2fd; color: #0d47a1; padding: 8px 12px; border-radius: 20px; 
-      font-weight: bold; display: inline-block; margin-bottom: 12px; font-size: 14px; border: 1px solid #bbdefb;
-    }
+    .tab-group { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
+    .btn-tab { flex: 1; min-width: 48px; padding: 8px; border: 1px solid #cbd5e1; background: #e2e8f0; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; }
+    .btn-tab.active { background: #2563eb; color: white; border-color: #2563eb; }
 
-    .field { margin-bottom: 12px; }
-    label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 13px; color: #495057; }
+    .sort-btn-group { display: flex; gap: 6px; margin-bottom: 10px; }
+    .btn-sort { flex: 1; padding: 6px; font-size: 0.75em; font-weight: bold; border: 1px solid #cbd5e1; background: #e2e8f0; border-radius: 6px; cursor: pointer; text-align: center; }
+    .btn-sort.active { background: #0284c7; color: white; border-color: #0284c7; }
+
+    .chip-box { background: #fefce8; border: 1px solid #fef08a; padding: 10px; border-radius: 8px; margin-bottom: 12px; }
+
+    input, select, button { width: 100%; padding: 8px; margin-top: 4px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+
+    .btn-submit { background: #27ae60; color: white; font-weight: bold; padding: 12px; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; font-size: 1em; }
+    .btn-submit:hover { background: #219150; }
+    .btn-edit-unlock { background: #d97706; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 10px; }
+
+    .btn-rule-modal { background: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em; width: auto; margin-top: 0; }
+    .btn-rule-modal:hover { background: #0369a1; }
+
+    .btn-share-line { background: #06c755; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: block; text-align: center; margin-top: 6px; }
+    .btn-share-viewer { background: #64748b; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: block; text-align: center; margin-top: 6px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.78em; }
+    th, td { border: 1px solid #ddd; padding: 6px 2px; text-align: center; }
+    th { background: #eef2f5; }
+
+    .rank-1 { background: #fef08a; font-weight: bold; }
     
-    .input-group { display: flex; gap: 8px; }
-    input { flex: 1; padding: 10px; font-size: 18px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 4px; }
+    .badge-team { padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75em; display: inline-block; }
+    .badge-team-A { background: #dbeafe; color: #1e3a8a; border: 1px solid #bfdbfe; }
+    .badge-team-B { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-team-C { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-team-D { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+
+    .group-setup-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .group-setup-title { font-weight: bold; color: #1e3a8a; font-size: 0.9em; margin-bottom: 6px; }
     
-    .mic-btn { padding: 10px 14px; background: #17a2b8; color: white; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
-    .mic-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
+    .player-card-setup { background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin-bottom: 6px; }
+    .player-inputs-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 6px; }
 
-    /* A~Z アルファベット順（均等グリッド配置） */
-    .keyboard-container {
-      margin-top: 8px;
-      background: #e9ecef;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ced4da;
-      display: grid;
-      /* 1行あたり6〜7個のボタンを完全均等幅で配置 */
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-    }
+    .btn-move-order { width: auto; padding: 2px 6px; font-size: 0.75em; font-weight: bold; background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; margin-top: 0; }
+    .btn-move-order:hover { background: #cbd5e1; }
 
-    .alpha-btn {
-      width: 100%;
-      height: 42px; /* ボタンの高さを統一 */
-      background: white;
-      border: 1px solid #adb5bd;
-      border-radius: 4px;
-      font-weight: bold;
-      font-size: 16px;
-      cursor: pointer;
-      color: #212529;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      touch-action: manipulation;
-      box-sizing: border-box;
-    }
-    .alpha-btn:active { background: #007bff; color: white; border-color: #0056b3; }
+    .history-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 12px; }
+    .history-hole-title { font-weight: bold; color: #1e3a8a; font-size: 0.85em; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; }
+    .plus-pts { color: #2563eb; font-weight: bold; }
+    .minus-pts { color: #dc2626; font-weight: bold; }
 
-    .submit-btn { width: 100%; padding: 16px; background: #28a745; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px; }
-    .submit-btn:disabled { background: #6c757d !important; cursor: not-allowed; }
+    .player-card-input { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+    .player-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     
-    .status-msg { font-size: 13px; font-weight: bold; text-align: center; margin-top: 8px; height: 18px; }
+    .score-stepper-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .score-stepper-row label { font-size: 0.8em; font-weight: bold; min-width: 40px; }
+    .stepper-box { display: flex; align-items: center; background: white; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; }
+    .btn-step { width: 36px; height: 36px; padding: 0; font-size: 1.2em; font-weight: bold; background: #e2e8f0; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0; }
+    .btn-step:active { background: #cbd5e1; }
+    .stepper-val { width: 44px; text-align: center; font-size: 1.1em; font-weight: bold; color: #1e293b; }
 
-    table { width: 100%; border-collapse: collapse; background: white; margin-top: 10px; }
-    th, td { border: 1px solid #dee2e6; padding: 6px 4px; text-align: center; font-size: 13px; }
-    th { background: #f1f3f5; }
+    .btn-grid-oly { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 8px; }
+    .btn-oly { padding: 8px 2px; font-size: 0.72em; font-weight: bold; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 6px; cursor: pointer; text-align: center; }
+    .btn-oly.active { background: #2563eb; color: white; border-color: #1d4ed8; box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); }
+
+    .btn-grid-pen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .btn-pen { padding: 8px 2px; font-size: 0.72em; font-weight: bold; border: 1px solid #fecdd3; background: #fff1f2; color: #9f1239; border-radius: 6px; cursor: pointer; text-align: center; }
+    .btn-pen.active { background: #e11d48; color: white; border-color: #be123c; box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); }
+
+    .past-room-item { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .past-room-item:hover { background: #e2e8f0; }
+
+    .btn-action-past { font-size: 0.75em; font-weight: bold; padding: 6px 8px; border: none; border-radius: 6px; cursor: pointer; width: auto; margin-top: 0; }
+    .btn-load-past { background: #0284c7; color: white; }
+    .btn-load-past:hover { background: #0369a1; }
+    .btn-delete-past { background: #ef4444; color: white; }
+    .btn-delete-past:hover { background: #dc2626; }
+
+    .editing-banner { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 8px 12px; border-radius: 6px; font-size: 0.85em; font-weight: bold; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+    .locked-container { opacity: 0.5; pointer-events: none; }
+    .unreachable-box { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 0.85em; margin-bottom: 10px; }
+
+    .par-select-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
+    .par-label-title { font-weight: bold; font-size: 0.8em; color: #1e3a8a; margin-top: 8px; margin-bottom: 2px; }
     
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    .personal-select-box { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px; border-radius: 8px; margin-bottom: 12px; }
+
+    /* モーダル用スタイリング */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 15px; box-sizing: border-box; }
+    .modal-body-content { background: white; padding: 18px; border-radius: 12px; width: 100%; max-width: 580px; max-height: 85vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .modal-nav-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; }
+    .btn-modal-tab { flex: 1; padding: 8px 4px; font-weight: bold; font-size: 0.78em; border: 1px solid #cbd5e1; background: #f1f5f9; border-radius: 6px; cursor: pointer; text-align: center; }
+    .btn-modal-tab.active { background: #0284c7; color: white; border-color: #0284c7; }
   </style>
 </head>
 <body>
 
-  <h2>📦 MEGAコード 格納記録</h2>
+  <h1>⛳️ コンペ スコアリアルタイム共有</h1>
 
-  <div class="card">
-    <div id="worker-display" class="worker-badge">
-      👤 作業者: 未設定
+  <!-- 幹事用 設定画面 -->
+  <div class="card" id="setup-sec">
+    <h2>👑 幹事用 コンペ新規作成・編集</h2>
+
+    <div id="editing-status-banner" class="editing-banner" style="display:none;">
+      <span>✏️ 既存コンペ「<span id="editing-room-title-name"></span>」を編集中</span>
+      <button type="button" onclick="cancelEditingRoom()" style="width:auto; padding:2px 8px; font-size:0.8em; background:#cbd5e1; border:none; border-radius:4px; cursor:pointer;">新規作成に戻る</button>
     </div>
+    
+    <label>コンペ名 / ルーム名</label>
+    <input type="text" id="roomTitle" value="第1回ゴルフコンペ" placeholder="例: サークルコンペ">
 
-    <div class="field">
-      <label>作業者名</label>
-      <div class="input-group">
-        <input type="text" id="worker-name" placeholder="例: 山田">
-        <button class="mic-btn" onclick="speechToInput('worker-name')">🎤 音声</button>
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; margin-top:10px;">
+      <div>
+        <label>組数</label>
+        <select id="groupCountSelect" onchange="renderGroupSetupForms()">
+          <option value="2">2組 (6〜8名)</option>
+          <option value="3" selected>3組 (9〜12名)</option>
+          <option value="4">4組 (12〜16名)</option>
+          <option value="5">5組 (15〜20名)</option>
+        </select>
+      </div>
+      <div>
+        <label>対戦チーム数</label>
+        <select id="teamCountSelect">
+          <option value="2">2チーム (A, B)</option>
+          <option value="3" selected>3チーム (A, B, C)</option>
+          <option value="4">4チーム (A, B, C, D)</option>
+        </select>
+      </div>
+      <div>
+        <label>スタート</label>
+        <select id="startCourseSelect">
+          <option value="OUT" selected>OUT (1H〜)</option>
+          <option value="IN">IN (10H〜)</option>
+        </select>
       </div>
     </div>
 
-    <div class="field">
-      <label>MEGAコード (数字6桁)</label>
-      <div class="input-group">
-        <input type="text" id="mega-code" placeholder="例: 325147" maxlength="6">
-        <button class="mic-btn" onclick="speechToInput('mega-code', 6)">🎤 音声</button>
+    <!-- PAR設定エリア -->
+    <div style="margin-top:15px; background:#f8fafc; border:1px solid #cbd5e1; padding:10px; border-radius:8px;">
+      <div style="font-weight:bold; font-size:0.85em; color:#1e3a8a; margin-bottom:4px;">⛳️ PAR3・PAR5の対象ホール指定</div>
+      <div style="font-size:0.72em; color:#64748b; margin-bottom:8px;">※選択しなかった残り10ホールは自動的にすべてPAR4となります。</div>
+
+      <div class="par-label-title">🚩 PAR 3 ホール（4箇所を選択）</div>
+      <div class="par-select-grid">
+        <select id="par3-select-1"></select>
+        <select id="par3-select-2"></select>
+        <select id="par3-select-3"></select>
+        <select id="par3-select-4"></select>
+      </div>
+
+      <div class="par-label-title">🏌️‍♂️ PAR 5 ホール（4箇所を選択）</div>
+      <div class="par-select-grid">
+        <select id="par5-select-1"></select>
+        <select id="par5-select-2"></select>
+        <select id="par5-select-3"></select>
+        <select id="par5-select-4"></select>
       </div>
     </div>
 
-    <div class="field">
-      <label>格納ロケ (英数6桁)</label>
-      <div class="input-group">
-        <input type="text" id="location" placeholder="例: C10225" maxlength="6" style="text-transform: uppercase;">
-        <button class="mic-btn" onclick="speechToInput('location')">🎤 音声</button>
-      </div>
+    <div id="group-inputs-container" style="margin-top:15px;"></div>
 
-      <!-- A〜Z アルファベット順配置（高さ・幅統一） -->
-      <div class="keyboard-container">
-        <button class="alpha-btn" onclick="setAlpha('A')">A</button>
-        <button class="alpha-btn" onclick="setAlpha('B')">B</button>
-        <button class="alpha-btn" onclick="setAlpha('C')">C</button>
-        <button class="alpha-btn" onclick="setAlpha('D')">D</button>
-        <button class="alpha-btn" onclick="setAlpha('E')">E</button>
-        <button class="alpha-btn" onclick="setAlpha('F')">F</button>
-        <button class="alpha-btn" onclick="setAlpha('G')">G</button>
-        <button class="alpha-btn" onclick="setAlpha('H')">H</button>
-        <button class="alpha-btn" onclick="setAlpha('I')">I</button>
-        <button class="alpha-btn" onclick="setAlpha('J')">J</button>
-        <button class="alpha-btn" onclick="setAlpha('K')">K</button>
-        <button class="alpha-btn" onclick="setAlpha('L')">L</button>
-        <button class="alpha-btn" onclick="setAlpha('M')">M</button>
-        <button class="alpha-btn" onclick="setAlpha('N')">N</button>
-        <button class="alpha-btn" onclick="setAlpha('O')">O</button>
-        <button class="alpha-btn" onclick="setAlpha('P')">P</button>
-        <button class="alpha-btn" onclick="setAlpha('Q')">Q</button>
-        <button class="alpha-btn" onclick="setAlpha('R')">R</button>
-        <button class="alpha-btn" onclick="setAlpha('S')">S</button>
-        <button class="alpha-btn" onclick="setAlpha('T')">T</button>
-        <button class="alpha-btn" onclick="setAlpha('U')">U</button>
-        <button class="alpha-btn" onclick="setAlpha('V')">V</button>
-        <button class="alpha-btn" onclick="setAlpha('W')">W</button>
-        <button class="alpha-btn" onclick="setAlpha('X')">X</button>
-        <button class="alpha-btn" onclick="setAlpha('Y')">Y</button>
-        <button class="alpha-btn" onclick="setAlpha('Z')">Z</button>
-      </div>
+    <button type="button" class="btn-submit" id="btn-create-room" onclick="createTournament()">コンペを作成してLINE共有リンクを発行</button>
+
+    <div style="margin-top:25px; border-top:2px solid #cbd5e1; padding-top:12px;">
+      <h2>📚 過去のコンペ履歴（再設定・編集・確認）</h2>
+      <div id="past-rooms-list" style="font-size:0.85em; color:#64748b;">(読込中...)</div>
     </div>
-
-    <div class="field">
-      <label>数量</label>
-      <div class="input-group">
-        <input type="number" id="quantity" placeholder="1" value="1">
-        <button class="mic-btn" onclick="speechToInput('quantity')">🎤 音声</button>
-      </div>
-    </div>
-
-    <button id="submit-btn" class="submit-btn" onclick="saveRecord()">登録してスプレッドシート保存</button>
-    <div id="status" class="status-msg"></div>
   </div>
 
-  <h3>📝 作業履歴</h3>
-  <table>
-    <thead><tr><th>時刻</th><th>作業者</th><th>MEGA</th><th>ロケ</th><th>数量</th></tr></thead>
-    <tbody id="history"></tbody>
-  </table>
+  <!-- LINE共有リンク表示エリア -->
+  <div class="card" id="share-sec" style="display:none;">
+    <h2>📲 参加者・閲覧者への共有用リンク</h2>
+    <p style="font-size:0.8em; color:#64748b;">各組の代表者、および一般閲覧者（スコア入力なし）へLINEで送信できます。</p>
+    
+    <div id="share-buttons-list"></div>
+
+    <div style="background:#e2e8f0; border:1px solid #cbd5e1; padding:10px; border-radius:8px; margin-top:15px; margin-bottom:10px;">
+      <div style="font-weight:bold; font-size:0.9em; margin-bottom:6px;">👀 全体用 閲覧専用リンク（誰でも順位表のみ閲覧可）</div>
+      <a id="viewer-share-btn" href="#" target="_blank" class="btn-share-viewer">👀 一般参加者へ閲覧専用リンクをLINE共有</a>
+    </div>
+
+    <button type="button" class="btn-submit" onclick="startAppAsHost()" style="background:#3b82f6; margin-top:10px;">幹事としてリーダーボードを開く</button>
+  </div>
+
+  <!-- スコア入力エリア（代表者用） -->
+  <div class="card" id="input-sec" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 id="input-group-title" style="margin:0; border:none;">スコア入力</h2>
+      <button type="button" class="btn-rule-modal" onclick="openRuleModal('basic')">📖 ルール説明</button>
+    </div>
+
+    <div class="tab-group" id="hole-tabs" style="margin-top:10px;"></div>
+
+    <div id="unreachable-msg" class="unreachable-box" style="display:none;">
+      ⚠️ 前のホールのスコアが未送信です。前のホールを先に送信してください。
+    </div>
+
+    <div id="unlock-btn-container" style="display:none;">
+      <button type="button" class="btn-edit-unlock" onclick="unlockHoleForm()">✏️ このホールのスコアを修正する</button>
+    </div>
+
+    <div id="hole-form-wrapper">
+      <div class="chip-box" id="chip-box" style="display:none;">
+        <label id="chip-title-label" style="font-size:0.85em; font-weight:bold; color:#854d0e;">🚩 チップ対象ホール (5P)</label>
+        <select id="chip-winner-select"></select>
+        <div style="font-size:0.75em; color:#854d0e; margin-top:4px;">※他全参加者から各5P獲得（該当なしは持越し）</div>
+      </div>
+
+      <div id="player-input-list"></div>
+
+      <button type="button" class="btn-submit" id="btn-submit-hole" onclick="saveHoleScores()">このホールのスコアを送信・次ホールへ</button>
+    </div>
+  </div>
+
+  <!-- リーダーボード & 詳細履歴 -->
+  <div class="card" id="board-sec" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="margin:0; border:none;" id="board-room-title">👤 個人総合リーダーボード</h2>
+      <button type="button" class="btn-rule-modal" onclick="openRuleModal('basic')">📖 ルール説明</button>
+    </div>
+
+    <div class="sort-btn-group" style="margin-top:10px;">
+      <button type="button" class="btn-sort active" id="btn-sort-total" onclick="setPlayerSort('total')">👑 総合P順 (全合算)</button>
+      <button type="button" class="btn-sort" id="btn-sort-net" onclick="setPlayerSort('net')">⛳️ ネット打数順</button>
+      <button type="button" class="btn-sort" id="btn-sort-game" onclick="setPlayerSort('game')">💎 ゲームP順</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>順位</th>
+          <th>組</th>
+          <th>名前</th>
+          <th>ネット (グロス)</th>
+          <th>スコアP</th>
+          <th>ゲームP</th>
+          <th>チームP</th>
+          <th>総合P</th>
+        </tr>
+      </thead>
+      <tbody id="player-rank-body"></tbody>
+    </table>
+    <div style="font-size:0.7em; color:#64748b; margin-top:6px;">
+      ※スコアP＝(平均ネット打数−自分のネット打数)×10倍（1打差＝10P）<br>
+      ※総合P＝スコアP ＋ ゲームP ＋ チームP（完全ゼロサム）
+    </div>
+
+    <div style="margin-top:25px; border-top:2px solid #cbd5e1; padding-top:12px;">
+      <h2>📜 ホール別 詳細履歴</h2>
+      <div class="sort-btn-group">
+        <button type="button" class="btn-sort active" id="btn-view-vegas" onclick="toggleHistoryView('vegas')">🎰 ラスベガス対戦履歴</button>
+        <button type="button" class="btn-sort" id="btn-view-game" onclick="toggleHistoryView('game')">💎 ゲームP・役・罰符履歴</button>
+        <button type="button" class="btn-sort" id="btn-view-personal" onclick="toggleHistoryView('personal')">👤 個人ホール別詳細</button>
+      </div>
+
+      <div id="history-vegas-container"></div>
+      <div id="history-game-container" style="display:none;"></div>
+
+      <div id="history-personal-container" style="display:none;">
+        <div class="personal-select-box">
+          <label style="font-weight:bold; font-size:0.85em; color:#1e3a8a;">👤 確認したいプレイヤーを選択:</label>
+          <select id="personal-player-select" onchange="renderPersonalHistory()"></select>
+        </div>
+        <div id="personal-detail-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3タブ切替式 ルール説明モーダル -->
+  <div id="rule-modal" class="modal-overlay" style="display:none;" onclick="closeRuleModalOuter(event)">
+    <div class="modal-body-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:6px; margin-bottom:8px;">
+        <h2 style="margin:0; border:none; font-size:1.1em; color:#1e3a8a;">📖 コンペ対戦ルールガイド</h2>
+        <button type="button" onclick="closeRuleModal()" style="width:auto; padding:4px 8px; font-weight:bold; background:#e2e8f0; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;">✕ 閉じる</button>
+      </div>
+
+      <!-- モーダル内タブ切替ボタン -->
+      <div class="modal-nav-tabs">
+        <button type="button" class="btn-modal-tab active" id="btn-rule-tab-basic" onclick="switchRuleTab('basic')">🏆 基本ルール</button>
+        <button type="button" class="btn-modal-tab" id="btn-rule-tab-vegas" onclick="switchRuleTab('vegas')">🎰 ラスベガス詳細</button>
+        <button type="button" class="btn-modal-tab" id="btn-rule-tab-teams" onclick="switchRuleTab('teams')">👥 チーム分け</button>
+      </div>
+
+      <!-- タブ1: 基本ルール -->
+      <div id="rule-tab-basic-content" style="font-size:0.8em; line-height:1.5; color:#334155;">
+        <div style="font-weight:bold; color:#1e3a8a;">🏆 1. 総合順位の仕組み</div>
+        <div>総合P ＝ スコアP ＋ ゲームP ＋ チームP（完全ゼロサム）</div>
+        <ul style="margin:4px 0 8px 18px; padding:0;">
+          <li><b>スコアP</b>: (平均ネット打数 − 自分の打数) × 10倍（1打差＝10P）</li>
+          <li><b>ゲームP</b>: オリンピック ＋ ニアピン/ドラコン ＋ 罰符の合算</li>
+          <li><b>チームP</b>: 毎ホールのラスベガス全対戦収支</li>
+        </ul>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px;">💎 2. オリンピック＆ペナルティ一覧</div>
+        <ul style="margin:4px 0 8px 18px; padding:0;">
+          <li>💎 <b>ダイヤ (+5P)</b> : グリーン外チップイン（パットなし）</li>
+          <li>🥇 <b>金 (+4P)</b> : グリーン最長パットを1パットイン</li>
+          <li>🥈 <b>銀 (+3P)</b> : 2番目に長いパットを1パットイン</li>
+          <li>🥉 <b>銅 (+2P)</b> : 3番目に長いパットを1パットイン</li>
+          <li>鉄 <b>鉄 (+1P)</b> : 4番目に長いパット（最短）を1パットイン</li>
+          <li>💥 <b>罰符 (-1P)</b> : 池 / OB / 3パット / バンカー（全他参加者へ各1P支払）</li>
+          <li>🚩 <b>ニアピン/ドラコン (+5P〜)</b> : Par3/Par5（獲得者なしは次回へ持ち越し）</li>
+        </ul>
+      </div>
+
+      <!-- タブ2: ラスベガス詳細ガイド -->
+      <div id="rule-tab-vegas-content" style="display:none; font-size:0.8em; line-height:1.5; color:#334155;">
+        <div style="font-weight:bold; color:#1e3a8a; font-size:0.95em;">🎰 ラスベガス対戦の計算ルール</div>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:8px;">1. チーム数字の作り方</div>
+        <div>各チーム内の**上位2名（ネット打数）**の打数を並べて2桁の数字を作ります。</div>
+        <ul style="margin:4px 0 8px 18px; padding:0;">
+          <li>通常時：小さい打数を10の位、大きい打数を1の位（例: 4打と5打 ➔ <b>`45`</b>点）</li>
+          <li>チーム内3名以上の場合は、最も良い2名の打数を自動採用します。</li>
+        </ul>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px;">2. 🔥 バーディー逆転ルール</div>
+        <div>ホール内で<b>バーディー（Parより1打少ない打数）</b>を出したチームがあると、<b>相手全チームの2桁数字が反転</b>（例: 56点 ➔ <b>`65`</b>点）します！</div>
+        <div style="font-size:0.75em; color:#64748b; margin-top:2px;">※数字が大きくなる＝相手チームにとって大ダメージとなります。</div>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px;">3. 3〜4チーム全総当たりの勝敗計算</div>
+        <div>毎ホール、「チームA vs B」「チームA vs C」「チームB vs C」のように、全チーム間で数字の差額を計算してポイントを合算します。</div>
+        <ul style="margin:4px 0 8px 18px; padding:0;">
+          <li>例: A(45点) vs B(56点) ➔ 差額11点（Aが+11P, Bが-11P）</li>
+          <li>全員の合計Pは毎ホール必ず**「0P（ゼロサム）」**になります。</li>
+        </ul>
+      </div>
+
+      <!-- タブ3: ラスベガスのチーム分けパターン -->
+      <div id="rule-tab-teams-content" style="display:none; font-size:0.78em; line-height:1.45; color:#334155;">
+        <div style="font-weight:bold; color:#1e3a8a; margin-bottom:4px;">1. 【2組6名】3チーム対戦 (各組3名) ★交差配分</div>
+        <table>
+          <thead><tr><th>打順</th><th>1組目</th><th>2組目</th></tr></thead>
+          <tbody>
+            <tr><td>1打手</td><td>チームA</td><td>チームC</td></tr>
+            <tr><td>2打手</td><td>チームB</td><td>チームB</td></tr>
+            <tr><td>3打手</td><td>チームC</td><td>チームA</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:0.7em; color:#64748b; margin-top:2px;">※打順和が全チーム「4」で完全対等（1+3, 2+2, 3+1）。</div>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">2. 【2組8名】4チーム対戦 (各組4名) ★交差配分</div>
+        <table>
+          <thead><tr><th>打順</th><th>1組目</th><th>2組目</th></tr></thead>
+          <tbody>
+            <tr><td>1打手</td><td>チームA</td><td>チームD</td></tr>
+            <tr><td>2打手</td><td>チームB</td><td>チームC</td></tr>
+            <tr><td>3打手</td><td>チームC</td><td>チームB</td></tr>
+            <tr><td>4打手</td><td>チームD</td><td>チームA</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:0.7em; color:#64748b; margin-top:2px;">※打順和が全チーム「5」で完全対等（1+4, 2+3）。</div>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">3. 【3組9名】3チーム対戦 (各組3名) ★完全巡回</div>
+        <table>
+          <thead><tr><th>打順</th><th>1組目</th><th>2組目</th><th>3組目</th></tr></thead>
+          <tbody>
+            <tr><td>1打手</td><td>チームA</td><td>チームB</td><td>チームC</td></tr>
+            <tr><td>2打手</td><td>チームB</td><td>チームC</td><td>チームA</td></tr>
+            <tr><td>3打手</td><td>チームC</td><td>チームA</td><td>チームB</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">4. 【3組12名】4チーム対戦 (各組4名) ★反転巡回</div>
+        <table>
+          <thead><tr><th>打順</th><th>1組目</th><th>2組目</th><th>3組目</th></tr></thead>
+          <tbody>
+            <tr><td>1打手</td><td>チームA</td><td>チームB</td><td>チームD</td></tr>
+            <tr><td>2打手</td><td>チームB</td><td>チームC</td><td>チームC</td></tr>
+            <tr><td>3打手</td><td>チームC</td><td>チームD</td><td>チームB</td></tr>
+            <tr><td>4打手</td><td>チームD</td><td>チームA</td><td>チームA</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">5. 【4組16名】4チーム対戦 (各組4名) ★4x4ラテン方陣</div>
+        <table>
+          <thead><tr><th>打順</th><th>1組目</th><th>2組目</th><th>3組目</th><th>4組目</th></tr></thead>
+          <tbody>
+            <tr><td>1打手</td><td>チームA</td><td>チームB</td><td>チームC</td><td>チームD</td></tr>
+            <tr><td>2打手</td><td>チームB</td><td>チームC</td><td>チームD</td><td>チームA</td></tr>
+            <tr><td>3打手</td><td>チームC</td><td>チームD</td><td>チームA</td><td>チームB</td></tr>
+            <tr><td>4打手</td><td>チームD</td><td>チームA</td><td>チームB</td><td>チームC</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">6. 【5組15〜20名】3〜4チーム対戦</div>
+        <div style="font-size:0.75em; color:#475569; line-height:1.4;">
+          • <b>5組15名 (3チーム)</b>: 1〜3組は完全巡回、4〜5組は交差配分（打順和10前後で均等）。<br>
+          • <b>5組20名 (4チーム)</b>: 1〜4組はラテン方陣、5組目は1〜4打手を順配分（打順和12.5前後で均等）。
+        </div>
+
+        <div style="font-weight:bold; color:#1e3a8a; margin-top:10px; margin-bottom:4px;">7. 💡 端数人数（10名・11名・15名など）の扱い</div>
+        <div style="font-size:0.75em; color:#475569; line-height:1.4;">
+          1組だけ3名で全参加人数に端数が出た場合、特定チームが4名、他チームが3名というように所属人数に差が生じます。<br>
+          ただし、ラスベガス計算時は全チーム<b>「チーム内上位2名（ベスト2）」</b>のスコアのみを自動抽出して2桁数字を作成するため、人数の少ないチームも不利になることなく完全対等に勝利を狙えます！
+        </div>
+      </div>
+
+      <button type="button" class="btn-submit" onclick="closeRuleModal()" style="background:#64748b; margin-top:15px;">閉じる</button>
+    </div>
+  </div>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxEFPQJJD67mLmghxSS2Rl0JVtP9g_Mzo3cpHfiwrSBcels1BBud-4NGkXSWEWFdjWv/exec";
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const firebaseConfig = {
+      databaseURL: "https://okadagolf-app-default-rtdb.firebaseio.com/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    function setAlpha(letter) {
-      const locInput = document.getElementById('location');
-      let val = locInput.value.replace(/^[A-Z]/, ''); // 先頭の英字を置換
-      locInput.value = letter + val;
+    let roomId = "";
+    let editingRoomId = null; // 既存コンペ再設定（上書き編集）用フラグ
+    let myGroup = 0;
+    let selectedHole = 1;
+    let currentHolePar = 4;
+    let playerSortMode = 'total';
+    let historyViewMode = 'vegas';
+    let isEditingUnlocked = false; 
+    let globalData = { players: {}, scores: {}, pars: {}, chips: {}, startCourse: "OUT", groupCount: 3, teamCount: 3 };
+
+    let tempInputState = {}; 
+    let holeCalculatedCache = {};
+
+    const ALL_TEAM_NAMES = ["チームA", "チームB", "チームC", "チームD"];
+    const TEAM_CLASSES = { 
+      "チームA": "badge-team-A", 
+      "チームB": "badge-team-B", 
+      "チームC": "badge-team-C", 
+      "チームD": "badge-team-D"
+    };
+
+    function openRuleModal(defaultTab = 'basic') {
+      document.getElementById('rule-modal').style.display = 'flex';
+      switchRuleTab(defaultTab);
     }
 
-    function speechToInput(targetId, digitLimit = null) {
-      if (!SpeechRecognition) return alert('お使いのブラウザは音声入力に対応していません');
+    function closeRuleModal() {
+      document.getElementById('rule-modal').style.display = 'none';
+    }
 
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'ja-JP';
-      recognition.interimResults = false;
+    function closeRuleModalOuter(e) {
+      if (e.target.id === 'rule-modal') {
+        closeRuleModal();
+      }
+    }
 
-      const targetEl = document.getElementById(targetId);
-      const btn = event.currentTarget;
-      btn.classList.add('recording');
-      btn.innerText = '🔴';
+    function switchRuleTab(tabName) {
+      const basicBtn = document.getElementById('btn-rule-tab-basic');
+      const vegasBtn = document.getElementById('btn-rule-tab-vegas');
+      const teamsBtn = document.getElementById('btn-rule-tab-teams');
 
-      recognition.start();
+      const basicContent = document.getElementById('rule-tab-basic-content');
+      const vegasContent = document.getElementById('rule-tab-vegas-content');
+      const teamsContent = document.getElementById('rule-tab-teams-content');
 
-      recognition.onresult = (e) => {
-        let text = e.results[0][0].transcript;
-        let raw = text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
-                      .replace(/\s+/g, '').toUpperCase();
+      basicBtn.classList.remove('active');
+      vegasBtn.classList.remove('active');
+      teamsBtn.classList.remove('active');
 
-        if (targetId === 'worker-name') {
-          targetEl.value = text.replace(/(です|と言います|さん)/g, '').trim();
-          updateWorkerDisplay(targetEl.value);
-        } else if (digitLimit) {
-          const match = raw.match(new RegExp(`[0-9]{${digitLimit}}`)) || raw.match(/[0-9]+/);
-          if (match) targetEl.value = match[0];
-        } else {
-          const currentAlpha = targetEl.value.match(/^[A-Z]/);
-          const digits = raw.match(/[0-9]+/);
-          if (currentAlpha && digits) {
-            targetEl.value = currentAlpha[0] + digits[0];
-          } else {
-            targetEl.value = raw;
+      basicContent.style.display = 'none';
+      vegasContent.style.display = 'none';
+      teamsContent.style.display = 'none';
+
+      if (tabName === 'vegas') {
+        vegasBtn.classList.add('active');
+        vegasContent.style.display = 'block';
+      } else if (tabName === 'teams') {
+        teamsBtn.classList.add('active');
+        teamsContent.style.display = 'block';
+      } else {
+        basicBtn.classList.add('active');
+        basicContent.style.display = 'block';
+      }
+    }
+
+    function getActiveTeamNames() {
+      const num = globalData.teamCount || 3;
+      return ALL_TEAM_NAMES.slice(0, num);
+    }
+
+    /* 精査済み・完全イーブンチーム割り当てアルゴリズム */
+    function getBalancedTeamIndex(groupNum, orderNum, teamNum) {
+      const gCount = globalData.groupCount || 3;
+      const gIdx = groupNum - 1; // 0-based
+      const oIdx = orderNum - 1; // 0-based
+
+      // 1. 2組8名 / 4チーム (交差配分: 打順和5)
+      if (gCount === 2 && teamNum === 4) {
+        if (gIdx === 0) return oIdx % 4; // 1組目: 0, 1, 2, 3
+        else return (3 - oIdx) % 4;     // 2組目: 3, 2, 1, 0
+      }
+
+      // 2. 2組6名 / 3チーム (交差配分: 打順和4)
+      if (gCount === 2 && teamNum === 3) {
+        if (gIdx === 0) return oIdx % 3; // 1組目: 0, 1, 2
+        else return (2 - oIdx) % 3;     // 2組目: 2, 1, 0
+      }
+
+      // 3. 3組12名 / 4チーム (反転巡回)
+      if (gCount === 3 && teamNum === 4) {
+        if (gIdx === 0) return oIdx % 4;           // 1組目: 0, 1, 2, 3
+        if (gIdx === 1) return (oIdx + 1) % 4;     // 2組目: 1, 2, 3, 0
+        if (gIdx === 2) return (3 - oIdx) % 4;     // 3組目: 3, 2, 1, 0
+      }
+
+      // 4. 4組16名 / 4チーム (4x4ラテン方陣)
+      if (gCount === 4 && teamNum === 4) {
+        return (gIdx + oIdx) % 4;
+      }
+
+      // 5. その他一般パターン (ラテン巡回)
+      return (gIdx + oIdx) % teamNum;
+    }
+
+    window.onload = function() {
+      initParDropdownOptions();
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      const groupParam = urlParams.get('group');
+
+      if (roomParam && groupParam !== null) {
+        roomId = roomParam;
+        myGroup = parseInt(groupParam);
+        startApp();
+      } else {
+        renderGroupSetupForms();
+        loadPastRoomsList();
+      }
+    };
+
+    function initParDropdownOptions() {
+      const defaultPar3 = [3, 7, 12, 16];
+      const defaultPar5 = [5, 9, 13, 18];
+
+      for (let i = 1; i <= 4; i++) {
+        const sel3 = document.getElementById(`par3-select-${i}`);
+        const sel5 = document.getElementById(`par5-select-${i}`);
+
+        if (sel3 && sel5) {
+          sel3.innerHTML = '';
+          sel5.innerHTML = '';
+
+          for (let h = 1; h <= 18; h++) {
+            sel3.innerHTML += `<option value="${h}" ${h === defaultPar3[i - 1] ? 'selected' : ''}>${h}H</option>`;
+            sel5.innerHTML += `<option value="${h}" ${h === defaultPar5[i - 1] ? 'selected' : ''}>${h}H</option>`;
           }
         }
-      };
-
-      recognition.onerror = recognition.onend = () => {
-        btn.classList.remove('recording');
-        btn.innerText = '🎤 音声';
-      };
+      }
     }
 
-    function updateWorkerDisplay(name) {
-      const display = document.getElementById('worker-display');
-      display.innerText = name ? `👤 作業者: ${name}` : '👤 作業者: 未設定';
-    }
-
-    document.getElementById('worker-name').addEventListener('input', (e) => {
-      updateWorkerDisplay(e.target.value);
-    });
-
-    async function saveRecord() {
-      const worker = document.getElementById('worker-name').value;
-      const mega = document.getElementById('mega-code').value;
-      const loc = document.getElementById('location').value;
-      const qty = document.getElementById('quantity').value;
-
-      if (!worker) return alert('作業者名を入力してください');
-      if (mega.length !== 6) return alert('MEGAコードは数字6桁で入力してください');
-      if (loc.length !== 6) return alert('格納ロケは英数6桁（例: C10225）で入力してください');
-      if (!qty) return alert('数量を入力してください');
-
-      const submitBtn = document.getElementById('submit-btn');
-      const statusEl = document.getElementById('status');
-
-      submitBtn.disabled = true;
-      submitBtn.innerText = '⏳ 保存中...';
-      statusEl.style.color = '#007bff';
-      statusEl.innerText = '☁️ スプレッドシートへ送信中...';
-
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-      const fullDateStr = now.toLocaleString('ja-JP');
-
-      try {
-        if (GAS_URL) {
-          await fetch(GAS_URL, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timestamp: fullDateStr, worker: worker, mega: mega, location: loc, quantity: qty })
-          });
+    function loadPastRoomsList() {
+      const pastListEl = document.getElementById('past-rooms-list');
+      db.ref('rooms').once('value', (snapshot) => {
+        const rooms = snapshot.val();
+        if (!rooms) {
+          pastListEl.innerHTML = '<div style="font-size:0.8em; color:#94a3b8;">まだ過去のコンペ履歴はありません。</div>';
+          return;
         }
 
-        const row = `<tr><td>${timeStr}</td><td>${worker}</td><td>${mega}</td><td>${loc}</td><td>${qty}</td></tr>`;
-        document.getElementById('history').insertAdjacentHTML('afterbegin', row);
+        pastListEl.innerHTML = '';
+        Object.entries(rooms).reverse().forEach(([rId, rData]) => {
+          const dateStr = rData.createdAt ? new Date(rData.createdAt).toLocaleDateString('ja-JP') : '';
+          const titleStr = rData.title || "無題のコンペ";
+          const pCount = Object.keys(rData.players || {}).length;
 
-        statusEl.style.color = '#28a745';
-        statusEl.innerText = '✅ シート保存完了';
-        setTimeout(() => { statusEl.innerText = ''; }, 3000);
+          pastListEl.innerHTML += `
+            <div class="past-room-item">
+              <div onclick="openPastRoom('${rId}')" style="cursor:pointer; flex:1;">
+                <div style="font-weight:bold; color:#1e3a8a;">🏆 ${titleStr}</div>
+                <div style="font-size:0.75em; color:#64748b;">${dateStr} (${rData.groupCount || 3}組 / ${rData.teamCount || 3}チーム / ${pCount}名)</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button type="button" class="btn-action-past btn-load-past" onclick="loadRoomToSetup('${rId}')">⚙️ 再設定</button>
+                <button type="button" class="btn-action-past btn-delete-past" onclick="deletePastRoom(event, '${rId}', '${titleStr}')">🗑️ 削除</button>
+                <div onclick="openPastRoom('${rId}')" style="font-size:0.8em; font-weight:bold; color:#2563eb; cursor:pointer; margin-left:4px;">閲覧 ➔</div>
+              </div>
+            </div>
+          `;
+        });
+      });
+    }
 
-        document.getElementById('mega-code').value = '';
-        document.getElementById('location').value = '';
-        document.getElementById('quantity').value = '1';
+    /* 過去のコンペを再設定用フォームに読み込み */
+    function loadRoomToSetup(rId) {
+      db.ref(`rooms/${rId}`).once('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
 
-      } catch (err) {
-        statusEl.style.color = '#dc3545';
-        statusEl.innerText = '❌ 送信失敗';
-        alert('スプレッドシートへの保存に失敗しました');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = '登録してスプレッドシート保存';
+        editingRoomId = rId;
+
+        document.getElementById('editing-status-banner').style.display = 'flex';
+        document.getElementById('editing-room-title-name').innerText = data.title || "コンペ";
+        document.getElementById('btn-create-room').innerText = "コンペ設定を上書き保存して共有リンク発行";
+
+        document.getElementById('roomTitle').value = data.title || "";
+        document.getElementById('groupCountSelect').value = data.groupCount || 3;
+        document.getElementById('teamCountSelect').value = data.teamCount || 3;
+        document.getElementById('startCourseSelect').value = data.startCourse || "OUT";
+
+        // PAR設定復元
+        const pars = data.pars || {};
+        let p3Count = 1;
+        let p5Count = 1;
+
+        for (let h = 1; h <= 18; h++) {
+          if (pars[h] === 3 && p3Count <= 4) {
+            document.getElementById(`par3-select-${p3Count}`).value = h;
+            p3Count++;
+          }
+          if (pars[h] === 5 && p5Count <= 4) {
+            document.getElementById(`par5-select-${p5Count}`).value = h;
+            p5Count++;
+          }
+        }
+
+        renderGroupSetupForms();
+
+        // プレイヤー情報復元
+        const players = data.players || {};
+        Object.values(players).forEach(p => {
+          const nameEl = document.getElementById(`g${p.group}-p${p.pos}-name`);
+          const hdcpEl = document.getElementById(`g${p.group}-p${p.pos}-hdcp`);
+          const ruleEl = document.getElementById(`g${p.group}-p${p.pos}-hdcpRule`);
+
+          if (nameEl) nameEl.value = p.name || "";
+          if (hdcpEl) hdcpEl.value = p.hdcp || 0;
+          if (ruleEl) ruleEl.value = p.hdcpRule || "none";
+        });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    function cancelEditingRoom() {
+      editingRoomId = null;
+      document.getElementById('editing-status-banner').style.display = 'none';
+      document.getElementById('btn-create-room').innerText = "コンペを作成してLINE共有リンクを発行";
+      document.getElementById('roomTitle').value = "第1回ゴルフコンペ";
+      renderGroupSetupForms();
+    }
+
+    function deletePastRoom(event, rId, title) {
+      event.stopPropagation();
+      if (confirm(`「${title}」のコンペデータを完全に削除してもよろしいですか？\n※削除したデータは復元できません。`)) {
+        db.ref(`rooms/${rId}`).remove().then(() => {
+          alert('コンペデータを削除しました。');
+          if (editingRoomId === rId) cancelEditingRoom();
+          loadPastRoomsList();
+        }).catch((err) => {
+          alert('削除処理でエラーが発生しました: ' + err.message);
+        });
       }
+    }
+
+    function openPastRoom(rId) {
+      roomId = rId;
+      myGroup = 0;
+      startApp();
+      db.ref(`rooms/${rId}`).once('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+          renderShareButtons(val.groupCount || 3);
+        }
+      });
+    }
+
+    function movePlayerOrder(g, p, dir) {
+      const targetP = p + dir;
+      if (targetP < 1 || targetP > 4) return;
+
+      const curName = document.getElementById(`g${g}-p${p}-name`).value;
+      const curHdcp = document.getElementById(`g${g}-p${p}-hdcp`).value;
+      const curRule = document.getElementById(`g${g}-p${p}-hdcpRule`).value;
+
+      const targetName = document.getElementById(`g${g}-p${targetP}-name`).value;
+      const targetHdcp = document.getElementById(`g${g}-p${targetP}-hdcp`).value;
+      const targetRule = document.getElementById(`g${g}-p${targetP}-hdcpRule`).value;
+
+      document.getElementById(`g${g}-p${p}-name`).value = targetName;
+      document.getElementById(`g${g}-p${p}-hdcp`).value = targetHdcp;
+      document.getElementById(`g${g}-p${p}-hdcpRule`).value = targetRule;
+
+      document.getElementById(`g${g}-p${targetP}-name`).value = curName;
+      document.getElementById(`g${g}-p${targetP}-hdcp`).value = curHdcp;
+      document.getElementById(`g${g}-p${targetP}-hdcpRule`).value = curRule;
+    }
+
+    function renderGroupSetupForms() {
+      const count = parseInt(document.getElementById('groupCountSelect').value);
+      const container = document.getElementById('group-inputs-container');
+      container.innerHTML = '';
+
+      for (let g = 1; g <= count; g++) {
+        let html = `<div class="group-setup-box"><div class="group-setup-title">🚩 ${g}組目 メンバー設定（当日の1H打順順）</div>`;
+        
+        for (let p = 1; p <= 4; p++) {
+          const isDefaultEmpty = (p === 4);
+          html += `
+            <div class="player-card-setup">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="font-size:0.8em; font-weight:bold; color:#1e3a8a;">${p}打手 (P${p})</span>
+                <div style="display:flex; gap:4px;">
+                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, -1)" ${p === 1 ? 'disabled style="opacity:0.4;"' : ''}>🔼 上へ</button>
+                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, 1)" ${p === 4 ? 'disabled style="opacity:0.4;"' : ''}>🔽 下へ</button>
+                </div>
+              </div>
+              <div class="player-inputs-grid">
+                <input type="text" id="g${g}-p${p}-name" value="${isDefaultEmpty ? '' : g + '組 P' + p}" placeholder="プレイヤー${p} 名前${isDefaultEmpty ? '（空欄可）' : ''}">
+                <input type="number" id="g${g}-p${p}-hdcp" value="0" placeholder="HDCP">
+              </div>
+              <div style="margin-top:4px;">
+                <select id="g${g}-p${p}-hdcpRule" style="font-size:0.8em;">
+                  <option value="none" selected>ハンディ適用なし</option>
+                  <option value="par4">PAR 4のみ適用</option>
+                  <option value="par45">PAR 4, 5のみ適用</option>
+                  <option value="everyone">全ホール適用 (エブリワン)</option>
+                </select>
+              </div>
+            </div>
+          `;
+        }
+
+        html += `</div>`;
+        container.innerHTML += html;
+      }
+    }
+
+    function createTournament() {
+      const title = document.getElementById('roomTitle').value.trim() || "ゴルフコンペ";
+      const count = parseInt(document.getElementById('groupCountSelect').value);
+      const teamCount = parseInt(document.getElementById('teamCountSelect').value);
+      const startCourse = document.getElementById('startCourseSelect').value;
+      
+      let pars = {};
+      for (let h = 1; h <= 18; h++) { pars[h] = 4; }
+
+      let par3Holes = [];
+      let par5Holes = [];
+
+      for (let i = 1; i <= 4; i++) {
+        par3Holes.push(parseInt(document.getElementById(`par3-select-${i}`).value));
+        par5Holes.push(parseInt(document.getElementById(`par5-select-${i}`).value));
+      }
+
+      const allSelected = [...par3Holes, ...par5Holes];
+      const hasDuplicates = new Set(allSelected).size !== allSelected.length;
+      if (hasDuplicates) {
+        alert("⚠️ PAR3とPAR5の選択ホールに重複があります。異なるホールを指定してください。");
+        return;
+      }
+
+      par3Holes.forEach(h => pars[h] = 3);
+      par5Holes.forEach(h => pars[h] = 5);
+
+      if (editingRoomId) {
+        roomId = editingRoomId;
+      } else {
+        roomId = "room-" + Math.random().toString(36).substring(2, 8);
+      }
+      
+      let players = {};
+      let pCount = 0;
+
+      for (let g = 1; g <= count; g++) {
+        for (let p = 1; p <= 4; p++) {
+          const nameInput = document.getElementById(`g${g}-p${p}-name`);
+          const hdcpInput = document.getElementById(`g${g}-p${p}-hdcp`);
+          const ruleInput = document.getElementById(`g${g}-p${p}-hdcpRule`);
+
+          if (nameInput && nameInput.value.trim() !== "") {
+            pCount++;
+            players[`p${pCount}`] = {
+              name: nameInput.value.trim(),
+              hdcp: parseInt(hdcpInput.value) || 0,
+              hdcpRule: ruleInput ? ruleInput.value : 'none',
+              group: g,
+              pos: p
+            };
+          }
+        }
+      }
+
+      db.ref(`rooms/${roomId}`).update({
+        title: title,
+        groupCount: count,
+        teamCount: teamCount,
+        startCourse: startCourse,
+        createdAt: Date.now(),
+        players: players,
+        pars: pars
+      }).then(() => {
+        alert(editingRoomId ? "コンペ設定を上書き保存しました！" : "コンペを新規作成しました！");
+        editingRoomId = null;
+        document.getElementById('editing-status-banner').style.display = 'none';
+        document.getElementById('btn-create-room').innerText = "コンペを作成してLINE共有リンクを発行";
+        renderShareButtons(count);
+        loadPastRoomsList();
+      }).catch((err) => {
+        alert("通信エラーが発生しました: " + err.message);
+      });
+    }
+
+    function renderShareButtons(count) {
+      document.getElementById('setup-sec').style.display = 'none';
+      document.getElementById('share-sec').style.display = 'block';
+
+      const list = document.getElementById('share-buttons-list');
+      list.innerHTML = '';
+
+      const baseUrl = window.location.href.split('?')[0];
+
+      for (let g = 1; g <= count; g++) {
+        const shareUrl = `${baseUrl}?room=${roomId}&group=${g}`;
+        const isLastGroup = (g === count);
+        const lineText = encodeURIComponent(`【ゴルフコンペ】${g}組目のスコア入力用リンクです${isLastGroup ? ' (※ニアピン・ドラコン入力担当)' : ''}：\n${shareUrl}`);
+        const lineUrl = `https://line.me/R/msg/text/?${lineText}`;
+
+        list.innerHTML += `
+          <div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:10px; border-radius:8px; margin-bottom:10px;">
+            <div style="font-weight:bold; font-size:0.9em; margin-bottom:6px;">🚩 ${g}組目用 スコア入力リンク ${isLastGroup ? '<span style="color:#d97706; font-size:0.8em;">[最終組:チップ担当]</span>' : ''}</div>
+            <a href="${lineUrl}" target="_blank" class="btn-share-line">📱 ${g}組目 代表者へLINEで送信</a>
+          </div>
+        `;
+      }
+
+      const viewerUrl = `${baseUrl}?room=${roomId}&group=0`;
+      const viewerLineText = encodeURIComponent(`【ゴルフコンペ】リアルタイム順位表（閲覧専用）はこちら：\n${viewerUrl}`);
+      document.getElementById('viewer-share-btn').href = `https://line.me/R/msg/text/?${viewerLineText}`;
+    }
+
+    function startAppAsHost() {
+      myGroup = 0;
+      startApp();
+    }
+
+    function startApp() {
+      document.getElementById('setup-sec').style.display = 'none';
+      document.getElementById('share-sec').style.display = 'none';
+
+      if (myGroup > 0) {
+        document.getElementById('input-sec').style.display = 'block';
+        document.getElementById('input-group-title').innerText = `${myGroup}組目のスコア入力`;
+      } else {
+        document.getElementById('input-sec').style.display = 'none';
+      }
+
+      document.getElementById('board-sec').style.display = 'block';
+
+      db.ref(`rooms/${roomId}`).on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+          globalData = val;
+          const roomTitleHeader = document.getElementById('board-room-title');
+          if (roomTitleHeader && val.title) {
+            roomTitleHeader.innerText = `🏆 ${val.title} 個人総合リーダーボード`;
+          }
+          populatePersonalSelect();
+        }
+
+        if (!selectedHole || selectedHole === 1) {
+          selectedHole = (globalData.startCourse === "IN") ? 10 : 1;
+        }
+
+        initHoleTabs();
+        if (myGroup > 0) {
+          renderInputForm();
+        }
+        calculateLeaderboard();
+      });
+    }
+
+    function populatePersonalSelect() {
+      const select = document.getElementById('personal-player-select');
+      if (!select) return;
+      
+      const curSelected = select.value;
+      select.innerHTML = '';
+
+      Object.entries(globalData.players || {}).forEach(([pId, p]) => {
+        select.innerHTML += `<option value="${pId}" ${pId === curSelected ? 'selected' : ''}>${p.group}組: ${p.name}</option>`;
+      });
+
+      if (!select.value && Object.keys(globalData.players || {}).length > 0) {
+        select.value = Object.keys(globalData.players)[0];
+      }
+
+      renderPersonalHistory();
+    }
+
+    function getHoleSequence() {
+      const isIN = (globalData.startCourse === "IN");
+      if (isIN) {
+        return [10, 11, 12, 13, 14, 15, 16, 17, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+      } else {
+        return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+      }
+    }
+
+    function initHoleTabs() {
+      const tabContainer = document.getElementById('hole-tabs');
+      tabContainer.innerHTML = '';
+      const seq = getHoleSequence();
+
+      seq.forEach(h => {
+        tabContainer.innerHTML += `
+          <button type="button" class="btn-tab ${h === selectedHole ? 'active' : ''}" id="tab-h${h}" onclick="selectHole(${h})">${h}H</button>
+        `;
+      });
+    }
+
+    function selectHole(h) {
+      selectedHole = h;
+      tempInputState = {}; 
+      isEditingUnlocked = false; 
+
+      const seq = getHoleSequence();
+
+      seq.forEach(i => {
+        const btn = document.getElementById(`tab-h${i}`);
+        if (btn) btn.className = `btn-tab ${i === h ? 'active' : ''}`;
+      });
+
+      currentHolePar = (globalData.pars && globalData.pars[selectedHole]) || 4;
+
+      if (myGroup > 0) {
+        renderInputForm();
+      }
+    }
+
+    function isHoleSubmittedByMyGroup(hNum) {
+      const holeScores = (globalData.scores && globalData.scores[hNum]) || {};
+      const groupPlayers = Object.entries(globalData.players || {}).filter(([id, p]) => p.group === myGroup);
+      return groupPlayers.some(([pId]) => holeScores[pId] && holeScores[pId].score !== undefined);
+    }
+
+    function setPlayerSort(mode) {
+      playerSortMode = mode;
+      document.getElementById('btn-sort-total').className = `btn-sort ${mode === 'total' ? 'active' : ''}`;
+      document.getElementById('btn-sort-net').className = `btn-sort ${mode === 'net' ? 'active' : ''}`;
+      document.getElementById('btn-sort-game').className = `btn-sort ${mode === 'game' ? 'active' : ''}`;
+      calculateLeaderboard();
+    }
+
+    function toggleHistoryView(mode) {
+      historyViewMode = mode;
+      document.getElementById('btn-view-vegas').className = `btn-sort ${mode === 'vegas' ? 'active' : ''}`;
+      document.getElementById('btn-view-game').className = `btn-sort ${mode === 'game' ? 'active' : ''}`;
+      document.getElementById('btn-view-personal').className = `btn-sort ${mode === 'personal' ? 'active' : ''}`;
+      
+      document.getElementById('history-vegas-container').style.display = (mode === 'vegas') ? 'block' : 'none';
+      document.getElementById('history-game-container').style.display = (mode === 'game') ? 'block' : 'none';
+      document.getElementById('history-personal-container').style.display = (mode === 'personal') ? 'block' : 'none';
+
+      if (mode === 'personal') {
+        renderPersonalHistory();
+      }
+    }
+
+    function renderPersonalHistory() {
+      const targetPId = document.getElementById('personal-player-select').value;
+      const listContainer = document.getElementById('personal-detail-list');
+      if (!targetPId || !globalData.players || !globalData.players[targetPId]) {
+        listContainer.innerHTML = '<div style="font-size:0.8em; color:#94a3b8;">プレイヤーが選択されていません。</div>';
+        return;
+      }
+
+      const pInfo = globalData.players[targetPId];
+      const seq = getHoleSequence();
+      const dynamicOrders = computeDynamicHoleOrders(seq, globalData.players || {}, globalData.scores || {}, globalData.pars || {});
+      const activeTeams = getActiveTeamNames();
+
+      let tableRows = '';
+      let totalGross = 0;
+      let totalNet = 0;
+      let totalVegasP = 0;
+
+      seq.forEach(h => {
+        const hData = (globalData.scores && globalData.scores[h] && globalData.scores[h][targetPId]) || {};
+        const par = (globalData.pars && globalData.pars[h]) || 4;
+        const cache = (holeCalculatedCache[h] && holeCalculatedCache[h][targetPId]) || { vegasDiff: 0, events: [] };
+
+        if (hData.score) {
+          const gross = hData.score;
+          const net = getAdjustedScore(gross, pInfo, par);
+          totalGross += gross;
+          totalNet += net;
+          totalVegasP += cache.vegasDiff;
+
+          const autoOrder = (dynamicOrders[h] && dynamicOrders[h][targetPId]) || pInfo.pos || 1;
+          const tIndex = getBalancedTeamIndex(pInfo.group, autoOrder, activeTeams.length);
+          const tKey = activeTeams[tIndex];
+          const tClass = TEAM_CLASSES[tKey] || "badge-team-A";
+
+          const vegasStr = cache.vegasDiff > 0 ? `<span class="plus-pts">+${cache.vegasDiff}P</span>` : (cache.vegasDiff < 0 ? `<span class="minus-pts">${cache.vegasDiff}P</span>` : '0P');
+
+          tableRows += `
+            <tr>
+              <td><b>${h}H</b> (P${par})</td>
+              <td><span class="badge-team ${tClass}">${tKey}</span> (${autoOrder}打手)</td>
+              <td><b>${gross}</b> (${net})</td>
+              <td><b>${vegasStr}</b></td>
+              <td style="font-size:0.75em; text-align:left; padding-left:6px;">${cache.events.length > 0 ? cache.events.join('<br>') : '-'}</td>
+            </tr>
+          `;
+        } else {
+          tableRows += `
+            <tr>
+              <td><b>${h}H</b> (P${par})</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>未入力</td>
+            </tr>
+          `;
+        }
+      });
+
+      listContainer.innerHTML = `
+        <div style="font-weight:bold; font-size:0.88em; color:#1e3a8a; margin-bottom:6px;">
+          👤 ${pInfo.name} さんのホール別詳細 (累計: ${totalGross}打 / ラスベガス収支: ${totalVegasP >= 0 ? '+' : ''}${totalVegasP}P)
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>ホール</th>
+              <th>所属チーム</th>
+              <th>打数(NET)</th>
+              <th>ラスベガスP</th>
+              <th>イベント・ペナルティ内訳</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      `;
+    }
+
+    function updateChipUI() {
+      const chipBox = document.getElementById('chip-box');
+      const chipSelect = document.getElementById('chip-winner-select');
+      const titleLabel = document.getElementById('chip-title-label');
+      const totalGroups = globalData.groupCount || 3;
+
+      if (currentHolePar === 3 || currentHolePar === 5) {
+        if (myGroup === totalGroups) {
+          chipBox.style.display = 'block';
+          titleLabel.innerText = currentHolePar === 3 ? "🚩 ニアピン獲得者（全コンペ対象 - 各5P）" : "🏌️‍♂️ ドラコン獲得者（全コンペ対象 - 各5P）";
+
+          const curWinner = (globalData.chips && globalData.chips[selectedHole]) || "-1";
+          chipSelect.innerHTML = '<option value="-1">なし（該当者なし）</option>';
+
+          Object.entries(globalData.players || {}).forEach(([pId, p]) => {
+            chipSelect.innerHTML += `<option value="${pId}" ${curWinner === pId ? 'selected' : ''}>${p.group}組: ${p.name}</option>`;
+          });
+        } else {
+          chipBox.style.display = 'none';
+        }
+      } else {
+        chipBox.style.display = 'none';
+      }
+    }
+
+    function changeScoreStep(pId, delta) {
+      if (!tempInputState[pId]) tempInputState[pId] = {};
+      const el = document.getElementById(`stepper-val-${pId}`);
+      let curVal = parseInt(el.innerText) || currentHolePar;
+      curVal = Math.max(1, curVal + delta);
+      el.innerText = curVal;
+      tempInputState[pId].score = curVal;
+    }
+
+    function toggleOly(pId, val) {
+      if (!tempInputState[pId]) tempInputState[pId] = {};
+      
+      if (tempInputState[pId].olympic === val) {
+        tempInputState[pId].olympic = ""; 
+      } else {
+        tempInputState[pId].olympic = val;
+      }
+
+      ['dia', 'gold', 'silver', 'bronze', 'iron'].forEach(v => {
+        const btn = document.getElementById(`btn-oly-${pId}-${v}`);
+        if (btn) {
+          if (tempInputState[pId].olympic === v) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+      });
+    }
+
+    function togglePen(pId, penType) {
+      if (!tempInputState[pId]) tempInputState[pId] = {};
+      tempInputState[pId][penType] = !tempInputState[pId][penType];
+
+      const btn = document.getElementById(`btn-pen-${pId}-${penType}`);
+      if (btn) {
+        if (tempInputState[pId][penType]) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+    }
+
+    function unlockHoleForm() {
+      isEditingUnlocked = true;
+      renderInputForm();
+    }
+
+    function renderInputForm() {
+      currentHolePar = (globalData.pars && globalData.pars[selectedHole]) || 4;
+      updateChipUI();
+
+      const seq = getHoleSequence();
+      const currentHoleIndex = seq.indexOf(selectedHole);
+      const isAlreadySubmitted = isHoleSubmittedByMyGroup(selectedHole);
+
+      let isPreviousHoleSubmitted = true;
+      if (currentHoleIndex > 0) {
+        const prevHoleNum = seq[currentHoleIndex - 1];
+        isPreviousHoleSubmitted = isHoleSubmittedByMyGroup(prevHoleNum);
+      }
+
+      const unreachableMsg = document.getElementById('unreachable-msg');
+      const unlockBtnContainer = document.getElementById('unlock-btn-container');
+      const holeFormWrapper = document.getElementById('hole-form-wrapper');
+
+      if (!isPreviousHoleSubmitted) {
+        unreachableMsg.style.display = 'block';
+        unlockBtnContainer.style.display = 'none';
+        holeFormWrapper.classList.add('locked-container');
+      } 
+      else if (isAlreadySubmitted && !isEditingUnlocked) {
+        unreachableMsg.style.display = 'none';
+        unlockBtnContainer.style.display = 'block';
+        holeFormWrapper.classList.add('locked-container');
+      } 
+      else {
+        unreachableMsg.style.display = 'none';
+        unlockBtnContainer.style.display = 'none';
+        holeFormWrapper.classList.remove('locked-container');
+      }
+
+      const list = document.getElementById('player-input-list');
+      let headerInfo = `【${selectedHole}番ホール / PAR ${currentHolePar}】スコア＆イベント入力`;
+      if (isAlreadySubmitted && !isEditingUnlocked && isPreviousHoleSubmitted) {
+        headerInfo += `<div style="font-size:0.8em; color:#d97706; font-weight:bold; margin-top:2px;">🔒 このホールのスコアは送信済みです（修正ボタンで解除）</div>`;
+      }
+
+      list.innerHTML = `<p style="font-size:0.85em; font-weight:bold; margin-bottom:8px;">${headerInfo}</p>`;
+
+      const dynamicOrders = computeDynamicHoleOrders(seq, globalData.players || {}, globalData.scores || {}, globalData.pars || {});
+      const activeTeams = getActiveTeamNames();
+      const groupPlayers = Object.entries(globalData.players || {}).filter(([id, p]) => p.group === myGroup);
+      const holeScores = (globalData.scores && globalData.scores[selectedHole]) || {};
+
+      const sortedGroupPlayers = groupPlayers.sort((a, b) => {
+        const orderA = (dynamicOrders[selectedHole] && dynamicOrders[selectedHole][a[0]]) || a[1].pos || 1;
+        const orderB = (dynamicOrders[selectedHole] && dynamicOrders[selectedHole][b[0]]) || b[1].pos || 1;
+        return orderA - orderB;
+      });
+
+      sortedGroupPlayers.forEach(([pId, p], idx) => {
+        const curData = holeScores[pId] || {};
+        const curScore = curData.score || currentHolePar;
+        
+        if (!tempInputState[pId]) {
+          tempInputState[pId] = {
+            score: curScore,
+            olympic: curData.olympic || "",
+            water: curData.water || false,
+            ob: curData.ob || false,
+            putt3: curData.putt3 || false,
+            bunker: curData.bunker || false
+          };
+        }
+
+        const autoOrder = (dynamicOrders[selectedHole] && dynamicOrders[selectedHole][pId]) || p.pos || (idx + 1);
+        const tIndex = getBalancedTeamIndex(myGroup, autoOrder, activeTeams.length);
+        const teamLabel = activeTeams[tIndex];
+        const teamClass = TEAM_CLASSES[teamLabel] || "badge-team-A";
+
+        const st = tempInputState[pId];
+
+        list.innerHTML += `
+          <div class="player-card-input">
+            <div class="player-header">
+              <div style="font-weight:bold; font-size:0.9em;">
+                ${p.name} (HDCP:${p.hdcp}) <span class="badge-team ${teamClass}">${teamLabel} (${autoOrder}打手)</span>
+              </div>
+            </div>
+
+            <div class="score-stepper-row">
+              <label>打数:</label>
+              <div class="stepper-box">
+                <button type="button" class="btn-step" onclick="changeScoreStep('${pId}', -1)">➖</button>
+                <div class="stepper-val" id="stepper-val-${pId}">${st.score}</div>
+                <button type="button" class="btn-step" onclick="changeScoreStep('${pId}', 1)">➕</button>
+              </div>
+              <span style="font-size:0.75em; color:#64748b;">打 (PAR${currentHolePar})</span>
+            </div>
+
+            <div style="font-size:0.7em; font-weight:bold; color:#475569; margin-bottom:2px;">オリンピック:</div>
+            <div class="btn-grid-oly">
+              <button type="button" class="btn-oly ${st.olympic==='dia'?'active':''}" id="btn-oly-${pId}-dia" onclick="toggleOly('${pId}', 'dia')">💎ダイヤ(+5)</button>
+              <button type="button" class="btn-oly ${st.olympic==='gold'?'active':''}" id="btn-oly-${pId}-gold" onclick="toggleOly('${pId}', 'gold')">🥇金(+4)</button>
+              <button type="button" class="btn-oly ${st.olympic==='silver'?'active':''}" id="btn-oly-${pId}-silver" onclick="toggleOly('${pId}', 'silver')">🥈銀(+3)</button>
+              <button type="button" class="btn-oly ${st.olympic==='bronze'?'active':''}" id="btn-oly-${pId}-bronze" onclick="toggleOly('${pId}', 'bronze')">🥉銅(+2)</button>
+              <button type="button" class="btn-oly ${st.olympic==='iron'?'active':''}" id="btn-oly-${pId}-iron" onclick="toggleOly('${pId}', 'iron')">鉄(+1)</button>
+            </div>
+
+            <div style="font-size:0.7em; font-weight:bold; color:#be123c; margin-bottom:2px;">罰符 (-1P):</div>
+            <div class="btn-grid-pen">
+              <button type="button" class="btn-pen ${st.water?'active':''}" id="btn-pen-${pId}-water" onclick="togglePen('${pId}', 'water')">🌊池ポチャ</button>
+              <button type="button" class="btn-pen ${st.ob?'active':''}" id="btn-pen-${pId}-ob" onclick="togglePen('${pId}', 'ob')">💥OB</button>
+              <button type="button" class="btn-pen ${st.putt3?'active':''}" id="btn-pen-${pId}-putt3" onclick="togglePen('${pId}', 'putt3')">⛳️3パット</button>
+              <button type="button" class="btn-pen ${st.bunker?'active':''}" id="btn-pen-${pId}-bunker" onclick="togglePen('${pId}', 'bunker')">⏳バンカー</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function getNextHole(curHole) {
+      const seq = getHoleSequence();
+      const idx = seq.indexOf(curHole);
+      if (idx !== -1 && idx < seq.length - 1) {
+        return seq[idx + 1];
+      }
+      return null;
+    }
+
+    function saveHoleScores() {
+      const groupPlayers = Object.entries(globalData.players || {})
+        .filter(([id, p]) => p.group === myGroup);
+
+      const seq = getHoleSequence();
+      const dynamicOrders = computeDynamicHoleOrders(seq, globalData.players || {}, globalData.scores || {}, globalData.pars || {});
+
+      groupPlayers.forEach(([pId, p], idx) => {
+        const st = tempInputState[pId] || {};
+        const scoreVal = st.score || currentHolePar;
+        const curOrder = (dynamicOrders[selectedHole] && dynamicOrders[selectedHole][pId]) || p.pos || (idx + 1);
+
+        db.ref(`rooms/${roomId}/scores/${selectedHole}/${pId}`).set({
+          score: scoreVal,
+          olympic: st.olympic || "",
+          water: !!st.water,
+          ob: !!st.ob,
+          putt3: !!st.putt3,
+          bunker: !!st.bunker,
+          order: curOrder
+        });
+      });
+
+      const totalGroups = globalData.groupCount || 3;
+      if ((currentHolePar === 3 || currentHolePar === 5) && myGroup === totalGroups) {
+        const chipWinner = document.getElementById('chip-winner-select').value;
+        db.ref(`rooms/${roomId}/chips/${selectedHole}`).set(chipWinner);
+      }
+
+      isEditingUnlocked = false; 
+
+      const nextHole = getNextHole(selectedHole);
+      if (nextHole) {
+        alert(`${selectedHole}番ホールのスコアを送信しました！次の${nextHole}番ホールへ移動します。`);
+        selectHole(nextHole);
+      } else {
+        alert(`${selectedHole}番ホールのスコアを送信しました！全ホール完了です。お疲れ様でした！`);
+      }
+    }
+
+    function getAdjustedScore(rawScore, p, par) {
+      let hdcp = p.hdcp || 0;
+      let rule = p.hdcpRule || 'none';
+      let apply = false;
+
+      if (rule === 'everyone') apply = true;
+      else if (rule === 'par45' && (par === 4 || par === 5)) apply = true;
+      else if (rule === 'par4' && par === 4) apply = true;
+
+      if (!apply) hdcp = 0;
+      let adjusted = rawScore - hdcp;
+      return adjusted < 1 ? 1 : adjusted;
+    }
+
+    function buildVegasScore(scores, par, oppHasBirdie) {
+      if (scores.length < 2) return 99;
+      let best = Math.min(scores[0], scores[1]);
+      let worst = Math.max(scores[0], scores[1]);
+
+      if (oppHasBirdie) {
+        return (worst * 10) + best;
+      } else {
+        return (best * 10) + worst;
+      }
+    }
+
+    function computeDynamicHoleOrders(seq, players, scores, pars) {
+      let holeOrders = {};
+
+      let groupsList = {};
+      Object.entries(players).forEach(([pId, p]) => {
+        if (!groupsList[p.group]) groupsList[p.group] = [];
+        groupsList[p.group].push({ id: pId, pos: p.pos || 1 });
+      });
+
+      Object.keys(groupsList).forEach(g => {
+        let prevOrderList = groupsList[g].sort((a, b) => a.pos - b.pos).map(x => x.id);
+
+        seq.forEach((h, hIdx) => {
+          if (!holeOrders[h]) holeOrders[h] = {};
+
+          if (hIdx === 0) {
+            prevOrderList.forEach((pId, idx) => {
+              holeOrders[h][pId] = idx + 1;
+            });
+          } else {
+            const prevHole = seq[hIdx - 1];
+            const prevPar = pars[prevHole] || 4;
+            const prevHScores = scores[prevHole] || {};
+
+            let currentRankings = prevOrderList.map(pId => {
+              const pData = prevHScores[pId];
+              const pRaw = pData ? pData.score : prevPar; 
+              const prevPosIdx = prevOrderList.indexOf(pId);
+              return { id: pId, gross: pRaw, prevPos: prevPosIdx };
+            });
+
+            currentRankings.sort((a, b) => {
+              if (a.gross !== b.gross) return a.gross - b.gross;
+              return a.prevPos - b.prevPos;
+            });
+
+            const newOrderList = currentRankings.map(x => x.id);
+            newOrderList.forEach((pId, idx) => {
+              holeOrders[h][pId] = idx + 1;
+            });
+
+            prevOrderList = newOrderList;
+          }
+        });
+      });
+
+      return holeOrders;
+    }
+
+    function calculateLeaderboard() {
+      const players = globalData.players || {};
+      const scores = globalData.scores || {};
+      const pars = globalData.pars || {};
+      const chips = globalData.chips || {};
+      const totalPlayersCount = Object.keys(players).length;
+
+      const activeTeams = getActiveTeamNames();
+      let crossTeamTotals = {};
+      activeTeams.forEach(t => crossTeamTotals[t] = 0);
+
+      let playerTotals = {};
+      let nearPinCarry = 0;
+      let doraConCarry = 0;
+
+      let vegasHistory = {};
+      let gameHistory = {};
+      holeCalculatedCache = {};
+
+      Object.keys(players).forEach(pId => {
+        playerTotals[pId] = { 
+          ...players[pId], 
+          gross: 0, 
+          net: 0, 
+          olyPoints: 0, 
+          scorePoints: 0, 
+          teamPoints: 0, 
+          totalPoints: 0 
+        };
+      });
+
+      const seq = getHoleSequence();
+      const dynamicOrders = computeDynamicHoleOrders(seq, players, scores, pars);
+
+      seq.forEach(h => {
+        const hScores = scores[h] || {};
+        const par = pars[h] || 4;
+        if (!holeCalculatedCache[h]) holeCalculatedCache[h] = {};
+
+        Object.keys(players).forEach(pId => {
+          holeCalculatedCache[h][pId] = { vegasDiff: 0, events: [] };
+        });
+
+        let crossBest2Scores = {};
+        let crossHasBirdie = {};
+        let crossMembers = {};
+
+        vegasHistory[h] = { par: par, teams: {} };
+        gameHistory[h] = { par: par, events: [] };
+
+        Object.keys(players).forEach(pId => {
+          const pGroup = players[pId].group;
+          const autoOrder = (dynamicOrders[h] && dynamicOrders[h][pId]) || players[pId].pos || 1;
+          const tIndex = getBalancedTeamIndex(pGroup, autoOrder, activeTeams.length);
+          const tKey = activeTeams[tIndex];
+
+          if (!crossBest2Scores[tKey]) crossBest2Scores[tKey] = [];
+          if (!crossMembers[tKey]) crossMembers[tKey] = [];
+          if (crossHasBirdie[tKey] === undefined) crossHasBirdie[tKey] = false;
+
+          crossMembers[tKey].push(players[pId].name);
+
+          if (hScores[pId]) {
+            const rawScore = hScores[pId].score;
+            const netScore = getAdjustedScore(rawScore, players[pId], par);
+
+            playerTotals[pId].gross += rawScore;
+            playerTotals[pId].net += netScore;
+
+            crossBest2Scores[tKey].push(netScore);
+
+            if (rawScore < par) crossHasBirdie[tKey] = true;
+
+            const oly = hScores[pId].olympic;
+            let rate = 0;
+            let olyName = "";
+            if (oly === 'dia') { rate = 5; olyName = "💎ダイヤ"; }
+            if (oly === 'gold') { rate = 4; olyName = "🥇金"; }
+            if (oly === 'silver') { rate = 3; olyName = "🥈銀"; }
+            if (oly === 'bronze') { rate = 2; olyName = "🥉銅"; }
+            if (oly === 'iron') { rate = 1; olyName = "鉄"; }
+
+            if (rate > 0 && totalPlayersCount > 1) {
+              const gained = rate * (totalPlayersCount - 1);
+              gameHistory[h].events.push({
+                playerName: players[pId].name,
+                desc: `${olyName} 獲得`,
+                pts: gained
+              });
+
+              Object.keys(players).forEach(targetId => {
+                if (targetId === pId) {
+                  playerTotals[targetId].olyPoints += gained;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="plus-pts">${olyName}獲得 (+${gained}P)</span>`);
+                } else {
+                  playerTotals[targetId].olyPoints -= rate;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="minus-pts">他: ${players[pId].name}の${olyName} (-${rate}P)</span>`);
+                }
+              });
+            }
+
+            let pList = [];
+            if (hScores[pId].water) pList.push("🌊池");
+            if (hScores[pId].ob) pList.push("💥OB");
+            if (hScores[pId].putt3) pList.push("⛳3パット");
+            if (hScores[pId].bunker) pList.push("⏳バンカー");
+
+            if (pList.length > 0 && totalPlayersCount > 1) {
+              const penaltyCount = pList.length;
+              const lost = penaltyCount * (totalPlayersCount - 1);
+              gameHistory[h].events.push({
+                playerName: players[pId].name,
+                desc: `罰符 (${pList.join(',')})`,
+                pts: -lost
+              });
+
+              Object.keys(players).forEach(targetId => {
+                if (targetId === pId) {
+                  playerTotals[targetId].olyPoints -= lost;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="minus-pts">罰符 (${pList.join(',')}) (-${lost}P)</span>`);
+                } else {
+                  playerTotals[targetId].olyPoints += penaltyCount;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="plus-pts">他: ${players[pId].name}の罰符還元 (+${penaltyCount}P)</span>`);
+                }
+              });
+            }
+          }
+        });
+
+        if (par === 3 || par === 5) {
+          const winnerId = chips[h] || "-1";
+
+          if (par === 3) {
+            if (winnerId !== "-1" && players[winnerId]) {
+              let unitPrize = 5 + nearPinCarry;
+              const totalGain = unitPrize * (totalPlayersCount - 1);
+              gameHistory[h].events.push({
+                playerName: players[winnerId].name,
+                desc: `🚩 ニアピン獲得${nearPinCarry > 0 ? ' (キャリー分含む)' : ''}`,
+                pts: totalGain
+              });
+
+              Object.keys(players).forEach(targetId => {
+                if (targetId === winnerId) {
+                  playerTotals[targetId].olyPoints += totalGain;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="plus-pts">🚩 ニアピン獲得 (+${totalGain}P)</span>`);
+                } else {
+                  playerTotals[targetId].olyPoints -= unitPrize;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="minus-pts">他: ニアピン獲得者へ支払 (-${unitPrize}P)</span>`);
+                }
+              });
+              nearPinCarry = 0;
+            } else {
+              nearPinCarry += 5;
+            }
+          } else if (par === 5) {
+            if (winnerId !== "-1" && players[winnerId]) {
+              let unitPrize = 5 + doraConCarry;
+              const totalGain = unitPrize * (totalPlayersCount - 1);
+              gameHistory[h].events.push({
+                playerName: players[winnerId].name,
+                desc: `🏌️‍♂️ ドラコン獲得${doraConCarry > 0 ? ' (キャリー分含む)' : ''}`,
+                pts: totalGain
+              });
+
+              Object.keys(players).forEach(targetId => {
+                if (targetId === winnerId) {
+                  playerTotals[targetId].olyPoints += totalGain;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="plus-pts">🏌️‍♂️ ドラコン獲得 (+${totalGain}P)</span>`);
+                } else {
+                  playerTotals[targetId].olyPoints -= unitPrize;
+                  holeCalculatedCache[h][targetId].events.push(`<span class="minus-pts">他: ドラコン獲得者へ支払 (-${unitPrize}P)</span>`);
+                }
+              });
+              doraConCarry = 0;
+            } else {
+              doraConCarry += 5;
+            }
+          }
+        }
+
+        const teams = Object.keys(crossTeamTotals);
+        let teamVegasCode = {};
+        let holeTeamDiffs = {};
+        teams.forEach(t => holeTeamDiffs[t] = 0);
+
+        teams.forEach(tKey => {
+          if (crossBest2Scores[tKey] && crossBest2Scores[tKey].length >= 2) {
+            crossBest2Scores[tKey].sort((a, b) => a - b);
+            teamVegasCode[tKey] = {
+              best2: [crossBest2Scores[tKey][0], crossBest2Scores[tKey][1]],
+              hasBirdie: crossHasBirdie[tKey]
+            };
+          }
+        });
+
+        for (let i = 0; i < teams.length; i++) {
+          for (let j = i + 1; j < teams.length; j++) {
+            const tA = teams[i];
+            const tB = teams[j];
+
+            if (teamVegasCode[tA] && teamVegasCode[tB]) {
+              const codeA = buildVegasScore(teamVegasCode[tA].best2, par, teamVegasCode[tB].hasBirdie);
+              const codeB = buildVegasScore(teamVegasCode[tB].best2, par, teamVegasCode[tA].hasBirdie);
+
+              const diff = codeB - codeA;
+              crossTeamTotals[tA] += diff;
+              crossTeamTotals[tB] -= diff;
+
+              holeTeamDiffs[tA] += diff;
+              holeTeamDiffs[tB] -= diff;
+
+              Object.keys(players).forEach(pId => {
+                const pGroup = players[pId].group;
+                const autoOrder = (dynamicOrders[h] && dynamicOrders[h][pId]) || players[pId].pos || 1;
+                const tIndex = getBalancedTeamIndex(pGroup, autoOrder, activeTeams.length);
+                const pTeam = activeTeams[tIndex];
+
+                if (pTeam === tA) {
+                  playerTotals[pId].teamPoints += diff;
+                  holeCalculatedCache[h][pId].vegasDiff += diff;
+                }
+                if (pTeam === tB) {
+                  playerTotals[pId].teamPoints -= diff;
+                  holeCalculatedCache[h][pId].vegasDiff -= diff;
+                }
+              });
+            }
+          }
+        }
+
+        teams.forEach(tKey => {
+          vegasHistory[h].teams[tKey] = {
+            members: crossMembers[tKey] || [],
+            code: teamVegasCode[tKey] ? buildVegasScore(teamVegasCode[tKey].best2, par, false) : "-",
+            diff: holeTeamDiffs[tKey]
+          };
+        });
+      });
+
+      if (totalPlayersCount > 0) {
+        let netSum = 0;
+        Object.values(playerTotals).forEach(p => { netSum += p.net; });
+        const avgNet = netSum / totalPlayersCount;
+
+        Object.keys(playerTotals).forEach(pId => {
+          const sP = Math.round((avgNet - playerTotals[pId].net) * 10);
+          playerTotals[pId].scorePoints = sP;
+          playerTotals[pId].totalPoints = sP + playerTotals[pId].olyPoints + playerTotals[pId].teamPoints;
+        });
+      }
+
+      const playerBody = document.getElementById('player-rank-body');
+      playerBody.innerHTML = '';
+      let sortedPlayers = Object.values(playerTotals);
+
+      if (playerSortMode === 'game') {
+        sortedPlayers.sort((a, b) => b.olyPoints - a.olyPoints);
+      } else if (playerSortMode === 'net') {
+        sortedPlayers.sort((a, b) => a.net - b.net);
+      } else {
+        sortedPlayers.sort((a, b) => b.totalPoints - a.totalPoints);
+      }
+
+      sortedPlayers.forEach((p, idx) => {
+        playerBody.innerHTML += `
+          <tr class="${idx === 0 ? 'rank-1' : ''}">
+            <td>${idx + 1}位</td>
+            <td>${p.group}組</td>
+            <td><b>${p.name}</b></td>
+            <td>${p.net} (${p.gross})</td>
+            <td>${p.scorePoints >= 0 ? '+' : ''}${p.scorePoints}</td>
+            <td>${p.olyPoints >= 0 ? '+' : ''}${p.olyPoints}</td>
+            <td>${p.teamPoints >= 0 ? '+' : ''}${p.teamPoints}</td>
+            <td><b>${p.totalPoints >= 0 ? '+' : ''}${p.totalPoints} P</b></td>
+          </tr>
+        `;
+      });
+
+      renderHistoryUI(seq, vegasHistory, gameHistory);
+    }
+
+    function renderHistoryUI(seq, vegasHistory, gameHistory) {
+      const vContainer = document.getElementById('history-vegas-container');
+      const gContainer = document.getElementById('history-game-container');
+
+      vContainer.innerHTML = '';
+      gContainer.innerHTML = '';
+
+      seq.forEach(h => {
+        const vData = vegasHistory[h];
+        const gData = gameHistory[h];
+
+        if (vData && vData.teams) {
+          let tRows = '';
+          Object.keys(vData.teams).forEach(tKey => {
+            const t = vData.teams[tKey];
+            const tClass = TEAM_CLASSES[tKey] || "badge-team-A";
+            const diffStr = t.diff > 0 ? `<span class="plus-pts">+${t.diff} P</span>` : (t.diff < 0 ? `<span class="minus-pts">${t.diff} P</span>` : '0 P');
+
+            tRows += `
+              <tr>
+                <td><span class="badge-team ${tClass}">${tKey}</span></td>
+                <td style="font-size:0.75em;">${t.members.join(', ')}</td>
+                <td><b>${t.code}</b>点</td>
+                <td>${diffStr}</td>
+              </tr>
+            `;
+          });
+
+          vContainer.innerHTML += `
+            <div class="history-card">
+              <div class="history-hole-title">${h}番ホール (PAR${vData.par}) チーム戦スコア＆収支</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>チーム</th>
+                    <th>メンバー</th>
+                    <th>ベガス数字</th>
+                    <th>収支P</th>
+                  </tr>
+                </thead>
+                <tbody>${tRows}</tbody>
+              </table>
+            </div>
+          `;
+        }
+
+        if (gData) {
+          let eventList = '';
+          if (gData.events && gData.events.length > 0) {
+            gData.events.forEach(e => {
+              const ptsStr = e.pts > 0 ? `<span class="plus-pts">+${e.pts} P</span>` : `<span class="minus-pts">${e.pts} P</span>`;
+              eventList += `<div style="font-size:0.8em; margin-bottom:2px;">• <b>${e.playerName}</b> : ${e.desc} ➔ ${ptsStr}</div>`;
+            });
+          } else {
+            eventList = `<div style="font-size:0.75em; color:#94a3b8;">(発生した役・ペナルティなし)</div>`;
+          }
+
+          gContainer.innerHTML += `
+            <div class="history-card">
+              <div class="history-hole-title">${h}番ホール (PAR${gData.par}) イベント・罰符発生ログ</div>
+              ${eventList}
+            </div>
+          `;
+        }
+      });
     }
   </script>
 </body>
