@@ -55,7 +55,7 @@
     .player-card-setup { background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin-bottom: 6px; }
     .player-inputs-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 6px; }
 
-    .btn-move-order { width: auto; padding: 2px 6px; font-size: 0.75em; font-weight: bold; background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; margin-top: 0; }
+    .btn-move-order { width: auto; padding: 4px 8px; font-size: 0.75em; font-weight: bold; background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; margin-top: 0; }
     .btn-move-order:hover { background: #cbd5e1; }
 
     .history-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 12px; }
@@ -639,7 +639,7 @@
 
         const players = data.players || {};
         
-        // グループ・ポシションごとにプレイヤーを整理してフォームを確実に埋める
+        // グループ・ポシションごとに順序(pos:1〜4)通りに並べて画面に入力
         Object.values(players).forEach(p => {
           const nameEl = document.getElementById(`g${p.group}-p${p.pos}-name`);
           const hdcpEl = document.getElementById(`g${p.group}-p${p.pos}-hdcp`);
@@ -691,21 +691,25 @@
       const targetP = p + dir;
       if (targetP < 1 || targetP > 4) return;
 
-      const curName = document.getElementById(`g${g}-p${p}-name`).value;
-      const curHdcp = document.getElementById(`g${g}-p${p}-hdcp`).value;
-      const curRule = document.getElementById(`g${g}-p${p}-hdcpRule`).value;
+      const curNameEl = document.getElementById(`g${g}-p${p}-name`);
+      const curHdcpEl = document.getElementById(`g${g}-p${p}-hdcp`);
+      const curRuleEl = document.getElementById(`g${g}-p${p}-hdcpRule`);
 
-      const targetName = document.getElementById(`g${g}-p${targetP}-name`).value;
-      const targetHdcp = document.getElementById(`g${g}-p${targetP}-hdcp`).value;
-      const targetRule = document.getElementById(`g${g}-p${targetP}-hdcpRule`).value;
+      const targetNameEl = document.getElementById(`g${g}-p${targetP}-name`);
+      const targetHdcpEl = document.getElementById(`g${g}-p${targetP}-hdcp`);
+      const targetRuleEl = document.getElementById(`g${g}-p${targetP}-hdcpRule`);
 
-      document.getElementById(`g${g}-p${p}-name`).value = targetName;
-      document.getElementById(`g${g}-p${p}-hdcp`).value = targetHdcp;
-      document.getElementById(`g${g}-p${p}-hdcpRule`).value = targetRule;
+      const tempName = curNameEl.value;
+      const tempHdcp = curHdcpEl.value;
+      const tempRule = curRuleEl.value;
 
-      document.getElementById(`g${g}-p${targetP}-name`).value = curName;
-      document.getElementById(`g${g}-p${targetP}-hdcp`).value = curHdcp;
-      document.getElementById(`g${g}-p${targetP}-hdcpRule`).value = curRule;
+      curNameEl.value = targetNameEl.value;
+      curHdcpEl.value = targetHdcpEl.value;
+      curRuleEl.value = targetRuleEl.value;
+
+      targetNameEl.value = tempName;
+      targetHdcpEl.value = tempHdcp;
+      targetRuleEl.value = tempRule;
     }
 
     function renderGroupSetupForms() {
@@ -723,8 +727,8 @@
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <span style="font-size:0.8em; font-weight:bold; color:#1e3a8a;">${p}打手 (P${p})</span>
                 <div style="display:flex; gap:4px;">
-                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, -1)" ${p === 1 ? 'disabled style="opacity:0.4;"' : ''}>🔼 上へ</button>
-                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, 1)" ${p === 4 ? 'disabled style="opacity:0.4;"' : ''}>🔽 下へ</button>
+                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, -1)">🔼 上へ</button>
+                  <button type="button" class="btn-move-order" onclick="movePlayerOrder(${g}, ${p}, 1)">🔽 下へ</button>
                 </div>
               </div>
               <div class="player-inputs-grid">
@@ -789,7 +793,7 @@
       let players = {};
       let pCount = 0;
 
-      // 画面上の動的な1〜4打手入力欄から確実に順位通り読み込む
+      // 画面上の動的な1〜4打手入力欄から最新順序通りに読み込んで保存
       for (let g = 1; g <= count; g++) {
         for (let p = 1; p <= 4; p++) {
           const nameInput = document.getElementById(`g${g}-p${p}-name`);
@@ -803,7 +807,7 @@
               hdcp: parseInt(hdcpInput.value) || 0,
               hdcpRule: ruleInput ? ruleInput.value : 'none',
               group: g,
-              pos: p // 1H目の打順順序 (1, 2, 3, 4)
+              pos: p // 入れ替え後の最新打順 (1, 2, 3, 4)
             };
           }
         }
@@ -818,7 +822,7 @@
         players: players,
         pars: pars
       }).then(() => {
-        alert(editingRoomId ? "コンペ設定を上書き保存しました！" : "コンペを新規作成しました！");
+        alert(editingRoomId ? "コンペ設定（打順）を上書き保存しました！" : "コンペを新規作成しました！");
         editingRoomId = null;
         document.getElementById('editing-status-banner').style.display = 'none';
         document.getElementById('btn-create-room').innerText = "コンペを作成してLINE共有リンクを発行";
