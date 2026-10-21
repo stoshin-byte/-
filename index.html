@@ -638,6 +638,8 @@
         }
 
         const players = data.players || {};
+        
+        // グループ・ポシションごとにプレイヤーを整理してフォームを確実に埋める
         Object.values(players).forEach(p => {
           const nameEl = document.getElementById(`g${p.group}-p${p.pos}-name`);
           const hdcpEl = document.getElementById(`g${p.group}-p${p.pos}-hdcp`);
@@ -787,6 +789,7 @@
       let players = {};
       let pCount = 0;
 
+      // 画面上の動的な1〜4打手入力欄から確実に順位通り読み込む
       for (let g = 1; g <= count; g++) {
         for (let p = 1; p <= 4; p++) {
           const nameInput = document.getElementById(`g${g}-p${p}-name`);
@@ -800,7 +803,7 @@
               hdcp: parseInt(hdcpInput.value) || 0,
               hdcpRule: ruleInput ? ruleInput.value : 'none',
               group: g,
-              pos: p
+              pos: p // 1H目の打順順序 (1, 2, 3, 4)
             };
           }
         }
