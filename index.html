@@ -15,9 +15,25 @@
     h1 { font-size: 1.25em; color: #1e293b; margin-top: 0; }
     h2 { font-size: 1em; color: #1e3a8a; margin-bottom: 8px; border-bottom: 2px solid #3b82f6; padding-bottom: 4px; }
     
-    .tab-group { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
-    .btn-tab { flex: 1; min-width: 48px; padding: 8px; border: 1px solid #cbd5e1; background: #e2e8f0; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; }
-    .btn-tab.active { background: #2563eb; color: white; border-color: #2563eb; }
+    /* ホール選択タブ：9列×2段の全画面常時表示グリッド */
+    .tab-group { 
+      display: grid; 
+      grid-template-columns: repeat(9, 1fr); 
+      gap: 4px; 
+      margin-bottom: 12px; 
+    }
+    .btn-tab { 
+      min-width: 0; 
+      padding: 6px 0; 
+      font-size: 0.72em; 
+      border: 1px solid #cbd5e1; 
+      background: #e2e8f0; 
+      font-weight: bold; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      text-align: center; 
+    }
+    .btn-tab.active { background: #2563eb; color: white; border-color: #2563eb; box-shadow: 0 2px 4px rgba(37,99,235,0.3); }
 
     .sort-btn-group { display: flex; gap: 6px; margin-bottom: 10px; }
     .btn-sort { flex: 1; padding: 6px; font-size: 0.75em; font-weight: bold; border: 1px solid #cbd5e1; background: #e2e8f0; border-radius: 6px; cursor: pointer; text-align: center; }
@@ -38,8 +54,8 @@
     .btn-rule-modal { background: #0284c7; color: white; font-weight: bold; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8em; width: auto; margin-top: 0; }
     .btn-rule-modal:hover { background: #0369a1; }
 
-    .btn-share-line { background: #06c755; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: text-decoration: none; display: block; text-align: center; margin-top: 6px; }
-    .btn-share-viewer { background: #64748b; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: text-decoration: none; display: block; text-align: center; margin-top: 6px; }
+    .btn-share-line { background: #06c755; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: block; text-align: center; margin-top: 6px; }
+    .btn-share-viewer { background: #64748b; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: block; text-align: center; margin-top: 6px; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.78em; }
     th, td { border: 1px solid #ddd; padding: 6px 2px; text-align: center; }
@@ -175,9 +191,9 @@
     <!-- PAR設定エリア -->
     <div style="margin-top:15px; background:#f8fafc; border:1px solid #cbd5e1; padding:10px; border-radius:8px;">
       <div style="font-weight:bold; font-size:0.85em; color:#1e3a8a; margin-bottom:4px;">⛳️ PAR3・PAR5の対象ホール指定</div>
-      <div style="font-size:0.72em; color:#64748b; margin-bottom:8px;">※選択しなかった残り10ホールは自動的にすべてPAR4となります。</div>
+      <div style="font-size:0.72em; color:#64748b; margin-bottom:8px;">※未選択のホールは自動的にすべてPAR4（チップ対象なし）となります。</div>
 
-      <div class="par-label-title">🚩 PAR 3 ホール（4箇所を選択）</div>
+      <div class="par-label-title">🚩 PAR 3 ホール（ニアピン対象）</div>
       <div class="par-select-grid">
         <select id="par3-select-1"></select>
         <select id="par3-select-2"></select>
@@ -185,7 +201,7 @@
         <select id="par3-select-4"></select>
       </div>
 
-      <div class="par-label-title">🏌️‍♂️ PAR 5 ホール（4箇所を選択）</div>
+      <div class="par-label-title">🏌️‍♂️ PAR 5 ホール（ドラコン対象）</div>
       <div class="par-select-grid">
         <select id="par5-select-1"></select>
         <select id="par5-select-2"></select>
@@ -347,7 +363,7 @@
         </ul>
       </div>
 
-      <!-- ② ダブルペリア詳細タブ（新規） -->
+      <!-- ② ダブルペリア詳細タブ -->
       <div id="rule-tab-peoria-content" style="display:none; font-size:0.8em; line-height:1.5; color:#334155;">
         <div style="font-weight:bold; color:#1e3a8a; font-size:0.95em;">🎲 全自動ダブルペリア（新ペリア）ルール</div>
         <div style="margin-top:6px;">アプリが18ホールの中から<b>隠し12ホール（PAR合計48）</b>をバックグラウンドで完全ランダム選出します。</div>
@@ -579,6 +595,7 @@
       }
     };
 
+    /* PAR選択ドロップダウンの初期化（「ー」設定なしの追加） */
     function initParDropdownOptions() {
       const defaultPar3 = [3, 7, 12, 16];
       const defaultPar5 = [5, 9, 13, 18];
@@ -588,8 +605,8 @@
         const sel5 = document.getElementById(`par5-select-${i}`);
 
         if (sel3 && sel5) {
-          sel3.innerHTML = '';
-          sel5.innerHTML = '';
+          sel3.innerHTML = '<option value="0">ー</option>';
+          sel5.innerHTML = '<option value="0">ー</option>';
 
           for (let h = 1; h <= 18; h++) {
             sel3.innerHTML += `<option value="${h}" ${h === defaultPar3[i - 1] ? 'selected' : ''}>${h}H</option>`;
@@ -673,12 +690,12 @@
 
       if (draftObj.par3s) {
         for (let i = 1; i <= 4; i++) {
-          if (draftObj.par3s[i-1]) document.getElementById(`par3-select-${i}`).value = draftObj.par3s[i-1];
+          if (draftObj.par3s[i-1] !== undefined) document.getElementById(`par3-select-${i}`).value = draftObj.par3s[i-1];
         }
       }
       if (draftObj.par5s) {
         for (let i = 1; i <= 4; i++) {
-          if (draftObj.par5s[i-1]) document.getElementById(`par5-select-${i}`).value = draftObj.par5s[i-1];
+          if (draftObj.par5s[i-1] !== undefined) document.getElementById(`par5-select-${i}`).value = draftObj.par5s[i-1];
         }
       }
 
@@ -863,8 +880,11 @@
       let par5Holes = [];
 
       for (let i = 1; i <= 4; i++) {
-        par3Holes.push(parseInt(document.getElementById(`par3-select-${i}`).value));
-        par5Holes.push(parseInt(document.getElementById(`par5-select-${i}`).value));
+        const val3 = parseInt(document.getElementById(`par3-select-${i}`).value);
+        const val5 = parseInt(document.getElementById(`par5-select-${i}`).value);
+
+        if (val3 > 0) par3Holes.push(val3);
+        if (val5 > 0) par5Holes.push(val5);
       }
 
       const allSelected = [...par3Holes, ...par5Holes];
