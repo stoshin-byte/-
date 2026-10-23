@@ -15,6 +15,8 @@
     h1 { font-size: 1.25em; color: #1e293b; margin-top: 0; }
     h2 { font-size: 1em; color: #1e3a8a; margin-bottom: 8px; border-bottom: 2px solid #3b82f6; padding-bottom: 4px; }
     
+    .manager-badge { background: #dbeafe; color: #1e3a8a; padding: 4px 10px; border-radius: 6px; font-size: 0.8em; font-weight: bold; border: 1px solid #bfdbfe; display: inline-block; margin-bottom: 10px; }
+
     /* ホール選択タブ：9列×2段の全画面常時表示グリッド */
     .tab-group { 
       display: grid; 
@@ -129,7 +131,8 @@
 
   <!-- 幹事用 設定画面 -->
   <div class="card" id="setup-sec">
-    <h2>👑 幹事用 コンペ新規作成 (Ver.2026-Fix)</h2>
+    <div class="manager-badge" id="manager-display-badge">👤 幹事ID: master</div>
+    <h2>👑 幹事用 コンペ新規作成</h2>
 
     <button type="button" class="btn-load-draft" id="btn-has-draft" onclick="loadDraftData()" style="display:none;">
       📂 前日に仮登録した下書きデータを読み込む
@@ -218,7 +221,7 @@
     </div>
 
     <div style="margin-top:25px; border-top:2px solid #cbd5e1; padding-top:12px;">
-      <h2>📚 過去のコンペ履歴（過去の記録）</h2>
+      <h2>📚 過去のコンペ履歴（あなた専用の記録）</h2>
       <div id="past-rooms-list" style="font-size:0.85em; color:#64748b;">(読込中...)</div>
     </div>
   </div>
@@ -413,6 +416,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    let currentManagerId = "master"; 
     let roomId = "";
     let myGroup = 0;
     let selectedHole = 1;
@@ -421,6 +425,7 @@
     let historyViewMode = 'vegas';
     let isEditingUnlocked = false; 
     let globalData = { 
+      managerId: "master",
       players: {}, scores: {}, pars: {}, chips: {}, 
       startCourse: "OUT", groupCount: 3, teamCount: 3,
       hdcpMode: "normal", vegasToggle: "ON", hiddenHoles: []
@@ -578,10 +583,20 @@
     }
 
     window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const managerParam = urlParams.get('manager');
+      if (managerParam) {
+        currentManagerId = managerParam.trim();
+      }
+
+      const badgeEl = document.getElementById('manager-display-badge');
+      if (badgeEl) {
+        badgeEl.innerText = `👤 幹事ID: ${currentManagerId}`;
+      }
+
       initParDropdownOptions();
       checkDraftExists();
 
-      const urlParams = new URLSearchParams(window.location.search);
       const roomParam = urlParams.get('room');
       const groupParam = urlParams.get('group');
 
@@ -595,7 +610,7 @@
       }
     };
 
-    /* PAR選択ドロップダウンの初期化（「ー」設定なしの追加） */
+    /* PAR選択ドロップダウンの初期化 */
     function initParDropdownOptions() {
       const defaultPar3 = [3, 7, 12, 16];
       const defaultPar5 = [5, 9, 13, 18];
@@ -616,7 +631,12 @@
       }
     }
 
-    /* 前日用: 下書き保存 (LocalStorage) */
+    /* 幹事IDごとの分離キーを取得 */
+    function getDraftStorageKey() {
+      return `golf_app_draft_${currentManagerId}`;
+    }
+
+    /* 前日用: 下書き保存 (LocalStorage分離) */
     function saveDraftData() {
       const count = parseInt(document.getElementById('groupCountSelect').value);
       let playersData = [];
@@ -645,6 +665,7 @@
       }
 
       const draftObj = {
+        managerId: currentManagerId,
         title: document.getElementById('roomTitle').value,
         hdcpMode: document.getElementById('hdcpModeSelect').value,
         vegasToggle: document.getElementById('vegasToggleSelect').value,
@@ -657,23 +678,23 @@
         savedAt: new Date().toLocaleString()
       };
 
-      localStorage.setItem('golf_app_draft', JSON.stringify(draftObj));
-      alert(`下書きデータ（前日用）を端末に保存しました！\n当日の朝にこの画面を開くと復元できます。`);
+      localStorage.setItem(getDraftStorageKey(), JSON.stringify(draftObj));
+      alert(`[幹事ID: ${currentManagerId}] 専用の下書きデータを保存しました！\n当日の朝にこの画面を開くと復元できます。`);
       checkDraftExists();
     }
 
     function checkDraftExists() {
-      const draft = localStorage.getItem('golf_app_draft');
+      const draft = localStorage.getItem(getDraftStorageKey());
       const btn = document.getElementById('btn-has-draft');
       if (draft && btn) {
         const draftObj = JSON.parse(draft);
         btn.style.display = 'block';
-        btn.innerText = `📂 前日保存した下書きを読み込む (${draftObj.savedAt})`;
+        btn.innerText = `📂 保存した下書きを読み込む (${draftObj.savedAt})`;
       }
     }
 
     function loadDraftData() {
-      const draftStr = localStorage.getItem('golf_app_draft');
+      const draftStr = localStorage.getItem(getDraftStorageKey());
       if (!draftStr) return;
 
       const draftObj = JSON.parse(draftStr);
@@ -711,9 +732,10 @@
         });
       }
 
-      alert('前日の下書きデータを復元しました！\n当日の1H目の打順通りに「▲ 上へ」「▼ 下へ」ボタンで並び替えてから本発行してください。');
+      alert('下書きデータを復元しました！\n当日の1H目の打順通りに並び替えてから本発行してください。');
     }
 
+    /* 幹事ID専用の過去コンペ履歴だけを読み込んで表示 */
     function loadPastRoomsList() {
       const pastListEl = document.getElementById('past-rooms-list');
       db.ref('rooms').once('value', (snapshot) => {
@@ -724,24 +746,35 @@
         }
 
         pastListEl.innerHTML = '';
-        Object.entries(rooms).reverse().forEach(([rId, rData]) => {
-          const dateStr = rData.createdAt ? new Date(rData.createdAt).toLocaleDateString('ja-JP') : '';
-          const titleStr = rData.title || "無題のコンペ";
-          const pCount = Object.keys(rData.players || {}).length;
+        let myRoomsCount = 0;
 
-          pastListEl.innerHTML += `
-            <div class="past-room-item">
-              <div onclick="openPastRoom('${rId}')" style="cursor:pointer; flex:1;">
-                <div style="font-weight:bold; color:#1e3a8a;">🏆 ${titleStr}</div>
-                <div style="font-size:0.75em; color:#64748b;">${dateStr} (${rData.groupCount || 3}組 / ${rData.hdcpMode === 'double_peoria' ? 'ダブルペリア' : '通常HDCP'} / ${pCount}名)</div>
+        Object.entries(rooms).reverse().forEach(([rId, rData]) => {
+          // 幹事IDが一致するものだけ表示
+          const roomManager = rData.managerId || "master";
+          if (roomManager === currentManagerId) {
+            myRoomsCount++;
+            const dateStr = rData.createdAt ? new Date(rData.createdAt).toLocaleDateString('ja-JP') : '';
+            const titleStr = rData.title || "無題のコンペ";
+            const pCount = Object.keys(rData.players || {}).length;
+
+            pastListEl.innerHTML += `
+              <div class="past-room-item">
+                <div onclick="openPastRoom('${rId}')" style="cursor:pointer; flex:1;">
+                  <div style="font-weight:bold; color:#1e3a8a;">🏆 ${titleStr}</div>
+                  <div style="font-size:0.75em; color:#64748b;">${dateStr} (${rData.groupCount || 3}組 / ${rData.hdcpMode === 'double_peoria' ? 'ダブルペリア' : '通常HDCP'} / ${pCount}名)</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <button type="button" class="btn-action-past btn-delete-past" onclick="deletePastRoom(event, '${rId}', '${titleStr}')">🗑️ 削除</button>
+                  <div onclick="openPastRoom('${rId}')" style="font-size:0.8em; font-weight:bold; color:#2563eb; cursor:pointer; margin-left:4px;">閲覧 ➔</div>
+                </div>
               </div>
-              <div style="display:flex; align-items:center; gap:6px;">
-                <button type="button" class="btn-action-past btn-delete-past" onclick="deletePastRoom(event, '${rId}', '${titleStr}')">🗑️ 削除</button>
-                <div onclick="openPastRoom('${rId}')" style="font-size:0.8em; font-weight:bold; color:#2563eb; cursor:pointer; margin-left:4px;">閲覧 ➔</div>
-              </div>
-            </div>
-          `;
+            `;
+          }
         });
+
+        if (myRoomsCount === 0) {
+          pastListEl.innerHTML = `<div style="font-size:0.8em; color:#94a3b8;">[幹事ID: ${currentManagerId}] の作成済みコンペはありません。</div>`;
+        }
       });
     }
 
@@ -769,7 +802,6 @@
       });
     }
 
-    /* 完全に動作保証された並び替え（値の入れ替え）関数 */
     function movePlayerOrder(g, p, dir) {
       const targetP = p + dir;
       if (targetP < 1 || targetP > 4) return;
@@ -838,7 +870,6 @@
       }
     }
 
-    /* ダブルペリア用: 隠し12ホールのランダム生成 */
     function generateHiddenHoles(par3List, par5List) {
       let allHoles = [];
       for (let i = 1; i <= 18; i++) allHoles.push(i);
@@ -924,6 +955,7 @@
       }
 
       db.ref(`rooms/${roomId}`).set({
+        managerId: currentManagerId, // 幹事IDを保存
         title: title,
         hdcpMode: hdcpMode,
         vegasToggle: vegasToggle,
@@ -1020,7 +1052,7 @@
       select.innerHTML = '';
 
       Object.entries(globalData.players || {}).forEach(([pId, p]) => {
-        select.innerHTML += `<option value="${pId}" ${pId === curSelected ? 'selected' : ''}>${p.group}組: ${p.name}</option>`;
+        select.innerHTML += `<option value="${pId}" ${pId === curSelected ? 'selected' : ''}>${p.group}组: ${p.name}</option>`;
       });
 
       if (!select.value && Object.keys(globalData.players || {}).length > 0) {
@@ -1489,7 +1521,6 @@
       return holeOrders;
     }
 
-    /* ダブルペリアHDCPの自動算出 */
     function calculateDoublePeoriaHdcp(pId, scores, hiddenHoles) {
       if (!hiddenHoles || hiddenHoles.length === 0) return 0;
 
